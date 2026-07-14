@@ -2,754 +2,1050 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fred's Blog - Interactive Reading Assistant</title>
-    <!-- Tailwind CSS for modern responsive styling -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>English Review Adventure</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts Inter & Comic Neue for kid-friendly yet professional feel -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
-    <!-- FontAwesome for icons -->
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Comic Neue for Game Feel) -->
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Nunito', sans-serif;
+            background-color: #f0fdf4; /* Light green background */
+            touch-action: manipulation; /* Prevent double-tap zoom on mobile */
+            overflow-x: hidden;
+            -webkit-user-select: none; /* Prevent text selection highlights on tap */
+            user-select: none;
         }
-        .comic-font {
-            font-family: 'Comic Neue', cursive;
-        }
-        /* Custom highlight for interactive vocabulary */
-        .vocab-word {
-            position: relative;
-            cursor: pointer;
-            border-bottom: 2px dashed #3b82f6; /* Tailwind blue-500 */
-            font-weight: 700;
-            color: #1d4ed8; /* Tailwind blue-700 */
-            padding: 0 2px;
-            transition: all 0.2s ease-in-out;
-            background-color: rgba(219, 234, 254, 0.4); /* Subtle blue background */
-            border-radius: 4px;
-        }
-        .vocab-word:hover {
-            background-color: rgba(191, 219, 254, 1);
-            color: #1e40af; /* Tailwind blue-800 */
-        }
-        .vocab-word.active {
-            background-color: #3b82f6;
-            color: #ffffff;
-            border-bottom-color: transparent;
-        }
-        /* Fade transition effect */
-        .fade-in {
+        .comic-font { font-family: 'Comic Neue', cursive; }
+        
+        /* Game Screen transitions */
+        .screen {
+            display: none;
             animation: fadeIn 0.4s ease-in-out;
         }
+        .screen.active {
+            display: flex;
+        }
+        
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .animate-pop { animation: pop 0.3s ease-in-out; }
+
+        /* Match Game Styles */
+        .match-card {
+            transition: all 0.2s;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .match-card.selected {
+            border-color: #3b82f6; /* Blue */
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+            transform: scale(1.05);
+        }
+        .match-card.matched {
+            background-color: #d1fae5; /* Green */
+            border-color: #10b981;
+            color: #047857;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        /* Drag and Drop Game Styles */
+        .draggable {
+            touch-action: none; /* Crucial for custom mobile drag */
+            user-select: none;
+            z-index: 10;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .draggable.tapped-selected {
+            border-color: #eab308;
+            box-shadow: 0 0 0 4px rgba(234, 179, 8, 0.4);
+            transform: scale(1.08);
+            background-color: #fef9c3;
+        }
+        .dropzone.active-zone {
+            background-color: #fef08a; /* Yellow highlight when hovering */
+            border-color: #eab308;
+            transform: scale(1.03);
+        }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen flex flex-col text-slate-800 antialiased">
+<body class="min-h-screen text-slate-800 flex flex-col">
 
-    <!-- -->
-    <!-- HEADER SECTION -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
-        <div class="max-w-7xl mx-auto px-3 py-3 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-3">
-            <div class="flex items-center justify-between w-full sm:w-auto">
-                <div class="flex items-center space-x-3">
-                    <div class="bg-indigo-600 text-white p-2 rounded-xl shadow-md">
-                        <i class="fa-solid fa-book-open text-xl"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">Fred's Blog</h1>
-                        <p class="text-[10px] sm:text-xs text-slate-500 font-medium line-clamp-1">Adapted from Pre-S2 English Course</p>
-                    </div>
-                </div>
-                <!-- Mobile Tips Toggle -->
-                <button onclick="toggleTips()" class="sm:hidden bg-indigo-50 text-indigo-700 w-9 h-9 flex items-center justify-center rounded-lg border border-indigo-100">
-                    <i class="fa-solid fa-circle-question"></i>
-                </button>
-            </div>
-            
-            <!-- Font-size Controls & Reading Progress bar -->
-            <div class="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                <!-- Text size adjustments - Larger touch targets for mobile -->
-                <div class="flex bg-slate-100 p-1.5 rounded-xl items-center border border-slate-200 w-full sm:w-auto justify-center">
-                    <button onclick="changeFontSize('small')" id="btn-fs-s" class="px-4 py-1.5 sm:px-2.5 sm:py-1 text-sm sm:text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition flex-1">A</button>
-                    <button onclick="changeFontSize('medium')" id="btn-fs-m" class="px-4 py-1.5 sm:px-3 sm:py-1 text-base sm:text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 bg-white shadow-xs text-indigo-600 transition flex-1">A</button>
-                    <button onclick="changeFontSize('large')" id="btn-fs-l" class="px-4 py-1.5 sm:px-2.5 sm:py-1 text-xl sm:text-lg font-bold rounded-lg text-slate-600 hover:text-slate-900 transition flex-1">A</button>
-                </div>
-                <!-- Desktop Tips toggle -->
-                <button onclick="toggleTips()" class="hidden sm:flex bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-semibold px-4 py-2 rounded-xl border border-indigo-100 transition items-center gap-2">
-                    <i class="fa-solid fa-circle-question"></i> <span>閱讀小指引</span>
-                </button>
-            </div>
+    <!-- Background Music Audio Element -->
+    <audio id="bgm-audio" loop preload="auto">
+        <source src="https://assets.codepen.io/17688442/Moavii+-+Tides+%26+Smiles+%28freetouse.com%29.mp3" type="audio/mpeg">
+    </audio>
+
+    <header class="bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-50">
+        <h1 class="text-xl font-bold text-emerald-600 comic-font">
+            <i class="fa-solid fa-gamepad"></i> Review Adventure
+        </h1>
+        <div class="flex items-center gap-3">
+            <button id="btn-home" onclick="goHome()" class="hidden bg-amber-100 text-amber-700 px-4 py-2 rounded-full font-bold text-sm shadow-sm hover:bg-amber-200 transition flex items-center gap-2">
+                <i class="fa-solid fa-arrow-left"></i> 回主頁
+            </button>
+            <button id="btn-bgm" onclick="toggleBGM()" class="bg-slate-100 text-slate-600 w-10 h-10 rounded-full font-bold shadow-sm hover:bg-slate-200 transition flex items-center justify-center text-lg">
+                <i id="btn-bgm-icon" class="fa-solid fa-volume-high"></i>
+            </button>
         </div>
     </header>
 
-    <!-- MAIN CONTENT container -->
-    <main class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
+    <main class="flex-1 max-w-lg mx-auto w-full relative flex flex-col">
         
-        <!-- LEFT SIDE: Text Reading Area & Navigation (Col: 7) -->
-        <section class="lg:col-span-7 flex flex-col space-y-6">
+        <!-- ================= START SCREEN ================= -->
+        <div id="screen-start" class="screen active flex-col p-6 flex-1 items-center justify-center min-h-[70vh]">
+            <div class="bg-white p-8 rounded-3xl shadow-sm border-2 border-slate-100 text-center w-full max-w-sm animate-pop">
+                <div class="text-5xl mb-4"><i class="fa-solid fa-graduation-cap text-emerald-500"></i></div>
+                <h2 class="text-4xl font-bold text-slate-800 comic-font mb-4">Lesson 1 Review!</h2>
+                <p class="text-slate-500 font-medium mb-8">準備好複習了嗎？</p>
+                
+                <button onclick="startApp()" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-4 px-8 rounded-2xl shadow-[0_6px_0_#3730a3] active:shadow-[0_0px_0_#3730a3] active:translate-y-[6px] transition-all text-xl flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-play"></i> Start!
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= MAIN MENU ================= -->
+        <div id="screen-home" class="screen flex-col p-6 space-y-6">
+            <div class="text-center mb-4">
+                <h2 class="text-3xl font-bold text-slate-700 comic-font mb-2">Choose a Mission!</h2>
+                <p class="text-slate-500 font-medium text-sm">溫習今天所學的知識，選擇一個任務開始吧！</p>
+            </div>
             
-            <!-- Help Tips Banner -->
-            <div id="tips-banner" class="bg-indigo-50 border border-indigo-200 text-indigo-900 p-4 rounded-2xl flex items-start gap-3 relative transition-all duration-300">
-                <i class="fa-solid fa-wand-magic-sparkles text-xl text-indigo-600 mt-0.5"></i>
-                <div>
-                    <h3 class="font-bold text-sm">💡 中一英文閱讀法寶！</h3>
-                    <p class="text-xs text-indigo-800 leading-relaxed mt-1">
-                        文章已被拆分成 6 段。請跟隨頁碼逐段閱讀。遇到<strong>藍色加底線的字詞</strong>時，直接<strong>點擊它</strong>，右邊的「智能單字盒」就會顯示中文意思及發音，快試試看吧！
-                    </p>
-                </div>
-                <button onclick="toggleTips()" class="absolute top-2 right-2 text-indigo-400 hover:text-indigo-600 p-1">
-                    <i class="fa-solid fa-xmark"></i>
+            <div class="grid grid-cols-1 gap-4">
+                <button onclick="startGame(1)" class="bg-blue-500 hover:bg-blue-600 text-white p-5 rounded-2xl shadow-[0_6px_0_#1d4ed8] active:shadow-[0_0px_0_#1d4ed8] active:translate-y-[6px] transition-all flex items-center gap-4 text-left">
+                    <div class="bg-white/20 p-3 rounded-xl text-2xl"><i class="fa-solid fa-chalkboard-user"></i></div>
+                    <div>
+                        <h3 class="text-lg font-bold comic-font">1. You are the Teacher</h3>
+                        <p class="text-blue-100 text-xs">Question words (Who, What...)</p>
+                    </div>
+                </button>
+
+                <button onclick="startGame(2)" class="bg-purple-500 hover:bg-purple-600 text-white p-5 rounded-2xl shadow-[0_6px_0_#6d28d9] active:shadow-[0_0px_0_#6d28d9] active:translate-y-[6px] transition-all flex items-center gap-4 text-left">
+                    <div class="bg-white/20 p-3 rounded-xl text-2xl"><i class="fa-solid fa-user-doctor"></i></div>
+                    <div>
+                        <h3 class="text-lg font-bold comic-font">2. Job Match</h3>
+                        <p class="text-purple-100 text-xs">Match the jobs with pictures</p>
+                    </div>
+                </button>
+
+                <button onclick="startGame(3)" class="bg-orange-500 hover:bg-orange-600 text-white p-5 rounded-2xl shadow-[0_6px_0_#c2410c] active:shadow-[0_0px_0_#c2410c] active:translate-y-[6px] transition-all flex items-center gap-4 text-left">
+                    <div class="bg-white/20 p-3 rounded-xl text-2xl"><i class="fa-solid fa-palette"></i></div>
+                    <div>
+                        <h3 class="text-lg font-bold comic-font">3. Activity Drag & Drop</h3>
+                        <p class="text-orange-100 text-xs">What is she doing?</p>
+                    </div>
+                </button>
+
+                <button onclick="startGame(4)" class="bg-rose-500 hover:bg-rose-600 text-white p-5 rounded-2xl shadow-[0_6px_0_#be123c] active:shadow-[0_0px_0_#be123c] active:translate-y-[6px] transition-all flex items-center gap-4 text-left">
+                    <div class="bg-white/20 p-3 rounded-xl text-2xl"><i class="fa-solid fa-pen-clip"></i></div>
+                    <div>
+                        <h3 class="text-lg font-bold comic-font">4. Listen & Write</h3>
+                        <p class="text-rose-100 text-xs">Dictation using your keyboard</p>
+                    </div>
                 </button>
             </div>
+        </div>
 
-            <!-- Reading Section Card -->
-            <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 flex-1 flex flex-col justify-between">
+        <!-- ================= GAME 1: QUESTION WORDS ================= -->
+        <div id="screen-game-1" class="screen flex-col p-4 h-full min-h-[80vh]">
+            <div class="text-center mb-3">
+                <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">Part 1</span>
+                <h2 class="text-xl font-bold text-slate-800 comic-font mt-1">You are the Teacher!</h2>
+                <p class="text-slate-500 text-xs mt-0.5">Look at the student's answer and pick the correct question word.</p>
+            </div>
+
+            <!-- Quiz Container -->
+            <div class="flex-1 flex flex-col items-center justify-center w-full max-w-sm mx-auto">
+                <div class="w-full flex justify-between text-xs font-bold text-slate-400 mb-1 px-1">
+                    <span id="g1-progress">Question 1 / 5</span>
+                </div>
                 
-                <!-- Card Header (Reading controls & block indicator) -->
-                <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
-                    <div class="flex items-center gap-2">
-                        <span id="para-badge" class="bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1.5 rounded-full tracking-wide">
-                            PARAGRAPH [1]
-                        </span>
-                        <span class="text-xs text-slate-400">• Fred's Blog</span>
+                <!-- Student Answer Bubble -->
+                <div class="bg-white border-2 border-slate-200 rounded-2xl p-4 w-full relative mb-6 shadow-xs">
+                    <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-yellow-100 text-yellow-800 text-xs px-3 py-0.5 rounded-full border border-yellow-300 font-bold">
+                        Student's Answer
                     </div>
-                    <!-- Audio Speak control -->
-                    <button id="btn-read-aloud" onclick="readAloudParagraph()" class="flex items-center gap-1.5 text-xs font-bold text-teal-600 bg-teal-50 hover:bg-teal-100 border border-teal-100 px-3 py-1.5 rounded-full transition duration-200">
-                        <i class="fa-solid fa-volume-high"></i> <span>聆聽段落</span>
-                    </button>
+                    <p id="g1-answer-text" class="text-base font-bold text-center text-slate-700 italic">"Alice and Emma are my cousins."</p>
+                    <div class="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-5 h-5 bg-white border-b-2 border-r-2 border-slate-200 transform rotate-45"></div>
                 </div>
 
-                <!-- Paragraph Display Content Area -->
-                <div id="paragraph-container" class="fade-in leading-relaxed text-slate-700 tracking-wide text-lg select-text min-h-[160px]">
-                    <!-- Injected dynamically by JavaScript -->
-                </div>
-
-                <!-- Pagination Navigation Controls -->
-                <div class="mt-8 pt-6 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div class="flex items-center space-x-2">
-                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">閱讀進度:</span>
-                        <div class="flex space-x-2 sm:space-x-1" id="dots-indicator">
-                            <!-- Nav dots generated by JS -->
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                        <button id="btn-prev" onclick="navigate(-1)" class="w-[48%] sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 bg-white hover:bg-slate-50 transition disabled:opacity-40 disabled:cursor-not-allowed flex justify-center items-center gap-2">
-                            <i class="fa-solid fa-arrow-left"></i> 上一段
-                        </button>
-                        <button id="btn-next" onclick="navigate(1)" class="w-[48%] sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-sm font-semibold text-white shadow-md shadow-indigo-100 transition flex justify-center items-center gap-2">
-                            下一段 <i class="fa-solid fa-arrow-right"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Moved Vocab Pills to the reading section for immediate mobile access -->
-                <div class="mt-8 pt-6 border-t border-slate-100">
-                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                        <i class="fa-solid fa-key text-indigo-400"></i> 當前段落的關鍵詞彙：
+                <!-- Teacher Question Area -->
+                <div class="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 w-full shadow-inner flex flex-col items-center">
+                    <h3 class="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-chalkboard-user"></i> Your Question:
                     </h3>
-                    <div id="vocab-pill-container" class="flex flex-wrap gap-2">
-                        <!-- Dynamic Vocab pills generated here -->
+                    <div class="flex flex-wrap justify-center gap-2 w-full" id="g1-options">
+                        <!-- Options generated by JS -->
                     </div>
-                    <p class="text-[11px] text-slate-400 mt-2 block lg:hidden">* 點擊上方單字或文章中藍色粗體字，即可在底部查看翻譯。</p>
+                    
+                    <!-- Blank Question Area -->
+                    <div id="g1-blank-question" class="text-base font-bold text-slate-700 mt-4 text-center bg-white px-3 py-2 rounded-xl border border-blue-100 shadow-xs w-full"></div>
                 </div>
+
+                <div id="g1-feedback" class="mt-4 text-lg font-bold h-6 text-center w-full"></div>
+                
+                <button id="g1-next-btn" onclick="nextQuestionG1()" class="hidden mt-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-8 rounded-xl shadow-[0_4px_0_#059669] active:shadow-[0_0px_0_#059669] active:translate-y-[4px] transition-all w-full">
+                    Next Question <i class="fa-solid fa-arrow-right"></i>
+                </button>
             </div>
 
-        </section>
-
-        <!-- RIGHT SIDE: Sidebar / Floating Dictionary Module (Col: 5) -->
-        <section class="lg:col-span-5 flex flex-col">
-            <!-- Mobile Backdrop overlay -->
-            <div id="mobile-dict-backdrop" class="fixed inset-0 bg-slate-900/40 z-40 hidden lg:hidden backdrop-blur-sm transition-opacity" onclick="closeDictionary()"></div>
-
-            <!-- Dictionary Panel (Sticky Desktop, Bottom Sheet Mobile) -->
-            <div id="dictionary-panel" class="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl lg:rounded-3xl border-t lg:border border-slate-200 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] lg:shadow-sm p-6 lg:p-6 pb-10 lg:pb-6 lg:sticky lg:top-24 transition-transform translate-y-full lg:translate-y-0 duration-300 max-h-[85vh] overflow-y-auto lg:max-h-none lg:overflow-visible">
-                
-                <!-- Mobile Drag Indicator & Close Button -->
-                <div class="flex justify-center mb-4 lg:hidden" onclick="closeDictionary()">
-                    <div class="w-12 h-1.5 bg-slate-300 rounded-full"></div>
-                </div>
-                <button onclick="closeDictionary()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 w-8 h-8 rounded-full flex items-center justify-center lg:hidden transition">
-                    <i class="fa-solid fa-xmark"></i>
+            <!-- Back to Home Button (Bottom) -->
+            <div class="mt-6 text-center pb-2 w-full flex-shrink-0">
+                <button onclick="goHome()" class="bg-white border-2 border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 font-bold py-3 px-6 rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 mx-auto w-full max-w-xs">
+                    <i class="fa-solid fa-arrow-left"></i> 回主頁 (Back to Home)
                 </button>
+            </div>
+        </div>
 
-                <!-- Panel Header -->
-                <div class="flex justify-between items-center pb-4 mb-4 border-b border-slate-100">
-                    <div class="flex items-center space-x-2">
-                        <div class="bg-amber-100 text-amber-700 p-2 rounded-lg">
-                            <i class="fa-solid fa-spell-check text-md"></i>
-                        </div>
-                        <h2 class="font-bold text-slate-800 text-lg">智能單字盒 (Smart Vocab)</h2>
-                    </div>
-                </div>
+        <!-- ================= GAME 2: JOB MATCH ================= -->
+        <div id="screen-game-2" class="screen flex-col p-4 h-full min-h-[80vh]">
+            <div class="text-center mb-3">
+                <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">Part 2</span>
+                <h2 class="text-xl font-bold text-slate-800 comic-font mt-1">Job Match</h2>
+                <p class="text-slate-500 text-xs mt-0.5">Tap a word, then tap the matching picture.</p>
+            </div>
 
-                <!-- Vocabulary Content Display Area -->
-                <div id="vocab-display" class="min-h-[220px] flex flex-col justify-center">
-                    
-                    <!-- Vocab Details (Hidden by default) -->
-                    <div id="vocab-details" class="hidden flex-col space-y-4 w-full fade-in">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h3 id="vocab-title" class="text-2xl font-bold text-indigo-700 comic-font tracking-wide"></h3>
-                                <span id="vocab-pos" class="inline-block bg-slate-100 text-slate-500 text-xs font-semibold px-2 py-1 rounded-md mt-1"></span>
-                            </div>
-                            <button onclick="speakCurrentWord()" class="w-10 h-10 rounded-full bg-purple-100 text-purple-600 hover:bg-purple-200 hover:scale-105 transition-all shadow-sm flex items-center justify-center">
-                                <i class="fa-solid fa-volume-high text-lg"></i>
+            <div class="flex-1 grid grid-cols-2 gap-x-4 gap-y-2 max-h-[50vh] overflow-y-auto" id="g2-board">
+                <!-- Column 1: Words -->
+                <div class="flex flex-col gap-2" id="g2-words-col"></div>
+                <!-- Column 2: Pictures -->
+                <div class="flex flex-col gap-2" id="g2-pics-col"></div>
+            </div>
+            
+            <div id="g2-win-msg" class="hidden text-center mt-4 animate-pop">
+                <div class="text-3xl mb-1">🎉</div>
+                <h3 class="text-xl font-bold text-emerald-600 comic-font">All Matched!</h3>
+            </div>
+
+            <!-- Back to Home Button (Bottom) -->
+            <div class="mt-6 text-center pb-2 w-full flex-shrink-0">
+                <button onclick="goHome()" class="bg-white border-2 border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 font-bold py-3 px-6 rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 mx-auto w-full max-w-xs">
+                    <i class="fa-solid fa-arrow-left"></i> 回主頁 (Back to Home)
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= GAME 3: ACTIVITY DRAG & DROP ================= -->
+        <div id="screen-game-3" class="screen flex-col p-4 h-full min-h-[85vh]">
+            <div class="text-center mb-4">
+                <span class="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">Part 3</span>
+                <h2 class="text-xl font-bold text-slate-800 comic-font mt-1">Listen & Match</h2>
+                <p class="text-slate-500 text-xs mt-0.5">Listen to the teacher and drag OR tap to match the correct emoji!</p>
+            </div>
+
+            <div class="relative flex-1 flex flex-col justify-between items-center w-full pb-6">
+                
+                <!-- Target Area (Middle Girl) -->
+                <div class="flex-1 flex items-center justify-center w-full z-0 my-2">
+                    <div id="g3-dropzone" class="dropzone w-56 h-56 sm:w-64 sm:h-64 rounded-2xl border-4 border-dashed border-slate-300 bg-white flex flex-col items-center justify-center shadow-inner transition-all duration-300 relative overflow-hidden">
+                        
+                        <!-- Teacher/Girl View -->
+                        <div id="g3-teacher-view" class="w-full h-full flex flex-col items-center justify-center absolute inset-0 z-10 transition-opacity">
+                            <!-- Display the specified girl image fully in background -->
+                            <img src="https://assets.codepen.io/17688442/Gemini_Generated_Image_kkdw3kkkdw3kkkdw.png" alt="Girl" class="w-full h-full object-cover absolute inset-0 -z-10">
+                            
+                            <!-- Listening Audio play button overlay -->
+                            <button onclick="playG3Audio()" class="bg-blue-500 hover:bg-blue-600 text-white rounded-full w-14 h-14 shadow-[0_4px_0_#1d4ed8] active:shadow-[0_0px_0_#1d4ed8] active:translate-y-[4px] flex items-center justify-center text-2xl transition-all z-20">
+                                <i class="fa-solid fa-volume-high"></i>
                             </button>
                         </div>
 
-                        <div class="space-y-3 pt-2">
-                            <div>
-                                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">中文解釋</h4>
-                                <p id="vocab-zh" class="text-slate-800 font-bold text-lg"></p>
-                            </div>
-
-                            <div>
-                                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">English Definition</h4>
-                                <p id="vocab-en" class="text-slate-700 text-sm leading-relaxed"></p>
-                            </div>
-
-                            <div class="bg-slate-50 border border-slate-100 p-3.5 rounded-xl">
-                                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">例句 (Example Sentence)</h4>
-                                <p id="vocab-example" class="text-slate-600 text-sm italic font-medium"></p>
-                            </div>
+                        <!-- Success Image View (Displays full screen matching photo upon success) -->
+                        <img id="g3-target-image" src="" alt="Activity" class="hidden w-full h-full object-cover absolute inset-0 z-20 bg-white">
+                        
+                        <div class="absolute bottom-2 bg-white/90 px-3 py-1 rounded-full shadow-xs z-30 pointer-events-none">
+                            <span id="g3-target-text" class="text-slate-600 font-bold text-xs">Drop or tap here!</span>
                         </div>
-                    </div>
-
-                    <!-- Idle / Default State -->
-                    <div id="vocab-placeholder" class="text-center py-10 space-y-3">
-                        <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
-                            <i class="fa-solid fa-hand-pointer text-2xl"></i>
-                        </div>
-                        <h3 class="font-bold text-slate-800">未選取單字</h3>
-                        <p class="text-xs text-slate-400 max-w-xs mx-auto px-4">
-                            當你閱讀時，點擊文章中的任何<b class="text-indigo-600">粗體帶底線</b>單字，它的完整解說與例句就會在此處展示。
-                        </p>
                     </div>
                 </div>
 
+                <!-- Draggable Items (Bottom Area) -->
+                <div class="w-full bg-orange-50 p-3 rounded-2xl border-2 border-orange-100 z-40 relative h-36">
+                    <h4 class="text-center text-[10px] font-bold text-orange-800 uppercase tracking-wide mb-2">Emojis (Tap & Target or Drag)</h4>
+                    <div id="g3-items-container" class="flex justify-around items-center h-20 w-full relative">
+                        <!-- Items generated by JS -->
+                    </div>
+                </div>
             </div>
-        </section>
+
+            <!-- Back to Home Button (Bottom) -->
+            <div class="mt-4 text-center pb-2 w-full flex-shrink-0">
+                <button onclick="goHome()" class="bg-white border-2 border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 font-bold py-3 px-6 rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 mx-auto w-full max-w-xs">
+                    <i class="fa-solid fa-arrow-left"></i> 回主頁 (Back to Home)
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= GAME 4: DICTATION ================= -->
+        <div id="screen-game-4" class="screen flex-col p-4 h-full min-h-[85vh]">
+            <div class="text-center mb-3">
+                <span class="bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">Part 4</span>
+                <h2 class="text-xl font-bold text-slate-800 comic-font mt-1">Listen & Type</h2>
+                <p class="text-slate-500 text-xs mt-0.5">Listen carefully and type the correct word.</p>
+            </div>
+
+            <div class="w-full flex justify-between items-center mb-4">
+                <span id="g4-progress" class="text-xs font-bold text-slate-500">Word 1 of 3</span>
+                <button onclick="playDictationAudio()" class="bg-rose-500 text-white w-12 h-12 rounded-full shadow-[0_4px_0_#9f1239] active:shadow-[0_0px_0_#9f1239] active:translate-y-[4px] flex items-center justify-center text-xl transition-all">
+                    <i class="fa-solid fa-volume-high"></i>
+                </button>
+            </div>
+
+            <!-- Input Area -->
+            <div class="w-full mb-3 relative">
+                <input type="text" id="g4-input" 
+                       class="w-full text-center text-2xl comic-font font-bold p-4 rounded-2xl border-4 border-slate-200 text-slate-700 focus:border-rose-400 focus:outline-none shadow-inner transition-colors disabled:opacity-90" 
+                       placeholder="Type here..." 
+                       autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
+            </div>
+
+            <!-- Feedback Area -->
+            <div id="g4-feedback" class="text-center mb-4 min-h-[4rem] flex flex-col items-center justify-center">
+                <!-- Feedback content will be injected here -->
+            </div>
+
+            <!-- Controls -->
+            <div class="mb-4 w-full">
+                <button id="g4-submit-btn" onclick="submitDictation()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 rounded-xl shadow-[0_4px_0_#1d4ed8] active:shadow-[0_0px_0_#1d4ed8] active:translate-y-[4px] transition-all flex items-center justify-center gap-2 text-base">
+                    <i class="fa-solid fa-paper-plane"></i> 提交答案 (Submit)
+                </button>
+            </div>
+
+            <button id="g4-next-btn" onclick="nextDictationWord()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-[0_4px_0_#059669] active:shadow-[0_0px_0_#059669] active:translate-y-[4px] transition-all hidden text-base">
+                Next Word <i class="fa-solid fa-arrow-right"></i>
+            </button>
+            <button id="g4-finish-btn" onclick="goHome()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl shadow-[0_4px_0_#b45309] active:shadow-[0_0px_0_#b45309] active:translate-y-[4px] transition-all hidden text-base">
+                完成！回主頁 <i class="fa-solid fa-house"></i>
+            </button>
+
+            <!-- Back to Home Button (Bottom) -->
+            <div class="mt-auto pt-6 text-center pb-2 w-full flex-shrink-0">
+                <button onclick="goHome()" class="bg-white border-2 border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 font-bold py-3 px-6 rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 mx-auto w-full max-w-xs">
+                    <i class="fa-solid fa-arrow-left"></i> 回主頁 (Back to Home)
+                </button>
+            </div>
+        </div>
 
     </main>
 
-    <!-- FOOTER SECTION -->
-    <footer class="bg-white border-t border-slate-200 py-6 mt-12">
-        <div class="max-w-7xl mx-auto px-4 text-center text-slate-400 text-xs space-y-1">
-            <p>Lingnan Secondary School Pre-S2 English Course (Lesson 1) - Fred's Blog</p>
-            <p class="font-medium">Made for junior secondary English reading enhancement &copy; 2026. All rights reserved.</p>
-        </div>
-    </footer>
-
-    <!-- -->
-    <!-- JAVASCRIPT LOGIC -->
     <script>
-        // Article Database separated into Paragraphs with structured Interactive Word tags
-        const paragraphs = [
-            {
-                index: 1,
-                id: "para-1",
-                text: `I see my <span class="vocab-word" data-word="cousins">cousins</span> almost every day. We live in an <span class="vocab-word" data-word="ordinary">ordinary</span> <span class="vocab-word" data-word="block">block</span> with a small shop on the ground floor. We live on the same floor. Our doors face the <span class="vocab-word" data-word="lifts">lifts</span>, so we meet as soon as I get home. My friends say I am lucky. Sometimes I <span class="vocab-word" data-word="agree">agree</span>. Sometimes I am not sure if <strong>they</strong> are right...`,
-                rawText: "I see my cousins almost every day. We live in an ordinary block with a small shop on the ground floor. We live on the same floor. Our doors face the lifts, so we meet as soon as I get home. My friends say I am lucky. Sometimes I agree. Sometimes I am not sure if they are right...",
-                words: ["cousins", "ordinary", "block", "lifts", "agree"]
-            },
-            {
-                index: 2,
-                id: "para-2",
-                text: `My <span class="vocab-word" data-word="cousins">cousins</span> are Alice and Emma. They are seven now. Yes, that's right, they are <span class="vocab-word" data-word="twins">twins</span>! They are five years <span class="vocab-word" data-word="younger">younger</span> than me and they will turn eight next month.`,
-                rawText: "My cousins are Alice and Emma. They are seven now. Yes, that's right, they are twins! They are five years younger than me and they will turn eight next month.",
-                words: ["cousins", "twins", "younger"]
-            },
-            {
-                index: 3,
-                id: "para-3",
-                text: `Alice and Emma both wear glasses. Alice has long straight hair and a <span class="vocab-word" data-word="fringe">fringe</span>. She <span class="vocab-word" data-word="usually">usually</span> ties her hair in a <span class="vocab-word" data-word="ponytail">ponytail</span>. Emma has short <span class="vocab-word" data-word="curly">curly</span> hair. My aunt, Jane, is a nurse and loves drawing oil paintings. My uncle, Johnson, is an <span class="vocab-word" data-word="engineer">engineer</span>. I sometimes play board games with him at weekends when my parents are not at home.`,
-                rawText: "Alice and Emma both wear glasses. Alice has long straight hair and a fringe. She usually ties her hair in a ponytail. Emma has short curly hair. My aunt, Jane, is a nurse and loves drawing oil paintings. My uncle, Johnson, is an engineer. I sometimes play board games with him at weekends when my parents are not at home.",
-                words: ["fringe", "usually", "ponytail", "curly", "engineer"]
-            },
-            {
-                index: 4,
-                id: "para-4",
-                text: `Alice is <span class="vocab-word" data-word="talkative">talkative</span>. She is <span class="vocab-word" data-word="seldom">seldom</span> quiet! Her <span class="vocab-word" data-word="hobbies">hobbies</span> are dancing and singing. I often hear her voice through the wall in the evening. Sometimes I cannot hear my own music because she sings very loudly. She loves singing. It sometimes <span class="vocab-word" data-word="fills">fills</span> the whole flat.`,
-                rawText: "Alice is talkative. She is seldom quiet! Her hobbies are dancing and singing. I often hear her voice through the wall in the evening. Sometimes I cannot hear my own music because she sings very loudly. She loves singing. It sometimes fills the whole flat.",
-                words: ["talkative", "seldom", "hobbies", "fills"]
-            },
-            {
-                index: 5,
-                id: "para-5",
-                text: `Emma is usually quiet but she can be quite <span class="vocab-word" data-word="bossy">bossy</span>. She enjoys watching videos and playing games on MY phone. Every afternoon she <span class="vocab-word" data-word="knocks">knocks</span> on our door. 'Hello, Fred!' she says and goes straight to my bag, finds my phone, and starts a game. 'You are so <span class="vocab-word" data-word="generous">generous</span> with your phone,' she says. <span class="vocab-word" data-word="honestly">Honestly</span>, I think she should ask me before taking my phone.`,
-                rawText: "Emma is usually quiet but she can be quite bossy. She enjoys watching videos and playing games on MY phone. Every afternoon she knocks on our door. 'Hello, Fred!' she says and goes straight to my bag, finds my phone, and starts a game. 'You are so generous with your phone,' she says. Honestly, I think she should ask me before taking my phone.",
-                words: ["bossy", "knocks", "generous", "honestly"]
-            },
-            {
-                index: 6,
-                id: "para-6",
-                text: `Sometimes my aunt, my uncle, and the twins go on <span class="vocab-word" data-word="holiday">holiday</span>. For a while, it feels like a holiday for me too! I can have some <span class="vocab-word" data-word="peace and quiet">peace and quiet</span>, and I can play on my phone after school. But after a few days, I start to miss them and I want them to come home <span class="vocab-word" data-word="immediately">immediately</span>! So, yes, maybe my friends are right. I am lucky to live next door to my cousins!`,
-                rawText: "Sometimes my aunt, my uncle, and the twins go on holiday. For a while, it feels like a holiday for me too! I can have some peace and quiet, and I can play on my phone after school. But after a few days, I start to miss them and I want them to come home immediately! So, yes, maybe my friends are right. I am lucky to live next door to my cousins!",
-                words: ["holiday", "peace and quiet", "immediately"]
+        // --- Audio Effects & Background Music Setup ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const bgmAudio = document.getElementById('bgm-audio');
+        let isBgmPlaying = false;
+
+        // Set low comfortable BGM volume
+        if (bgmAudio) {
+            bgmAudio.volume = 0.25;
+        }
+
+        function startBGM() {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            if (bgmAudio) {
+                bgmAudio.play().then(() => {
+                    isBgmPlaying = true;
+                    document.getElementById('btn-bgm-icon').className = "fa-solid fa-volume-high";
+                }).catch(e => {
+                    console.log("BGM autoplay delayed until user interaction:", e);
+                });
             }
+        }
+
+        function stopBGM() {
+            if (bgmAudio) {
+                bgmAudio.pause();
+                isBgmPlaying = false;
+                document.getElementById('btn-bgm-icon').className = "fa-solid fa-volume-xmark text-slate-400";
+            }
+        }
+
+        function toggleBGM() {
+            if(isBgmPlaying) {
+                stopBGM();
+            } else {
+                startBGM();
+            }
+        }
+
+        // --- Interactive Audio SFX generator ---
+        function playCorrectSound() {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.12);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.35);
+        }
+        
+        function playWrongSound() {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(260, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(120, audioCtx.currentTime + 0.25);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.25);
+        }
+
+        // --- Screen Navigation ---
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(`screen-${screenId}`).classList.add('active');
+            
+            const btnHome = document.getElementById('btn-home');
+            if (screenId === 'home' || screenId === 'start') {
+                btnHome.classList.add('hidden');
+            } else {
+                btnHome.classList.remove('hidden');
+            }
+        }
+
+        function startApp() {
+            // Start playing the designated MP3 track on Start
+            startBGM();
+            showScreen('home');
+        }
+
+        function goHome() {
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+            showScreen('home');
+        }
+
+        function startGame(gameNumber) {
+            showScreen(`game-${gameNumber}`);
+            setTimeout(() => {
+                if (gameNumber === 1) initGame1();
+                if (gameNumber === 2) initGame2();
+                if (gameNumber === 3) initGame3();
+                if (gameNumber === 4) initGame4();
+            }, 50);
+        }
+
+        // ================= GAME 1: QUESTION WORDS =================
+        const g1Data = [
+            { answer: "<u class='decoration-2 decoration-amber-500 underline-offset-4'>Alice and Emma</u> are my cousins.", qword: "Who", rest: "are they?" },
+            { answer: "They are <u class='decoration-2 decoration-amber-500 underline-offset-4'>seven years old</u>.", qword: "How old", rest: "are they?" },
+            { answer: "My aunt is a <u class='decoration-2 decoration-amber-500 underline-offset-4'>nurse</u>.", qword: "What", rest: "is your aunt's job?" },
+            { answer: "I play board games <u class='decoration-2 decoration-amber-500 underline-offset-4'>at weekends</u>.", qword: "When", rest: "do you play board games?" },
+            { answer: "I can't hear music <u class='decoration-2 decoration-amber-500 underline-offset-4'>because she sings loudly</u>.", qword: "Why", rest: "can't you hear music?" }
+        ];
+        const allQWords = ["Who", "How old", "What", "When", "Why"];
+        let g1CurrentIdx = 0;
+
+        function initGame1() {
+            g1CurrentIdx = 0;
+            renderGame1();
+        }
+
+        function renderGame1() {
+            const data = g1Data[g1CurrentIdx];
+            document.getElementById('g1-progress').innerText = `Question ${g1CurrentIdx + 1} / ${g1Data.length}`;
+            document.getElementById('g1-answer-text').innerHTML = `"${data.answer}"`;
+            document.getElementById('g1-feedback').innerHTML = "";
+            document.getElementById('g1-next-btn').classList.add('hidden');
+            
+            const blankQuestion = document.getElementById('g1-blank-question');
+            blankQuestion.innerHTML = `<span class="text-blue-500">( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )</span> ${data.rest}`;
+            
+            const optionsContainer = document.getElementById('g1-options');
+            optionsContainer.innerHTML = "";
+            
+            allQWords.forEach(qw => {
+                const btn = document.createElement('button');
+                btn.className = "bg-white border border-blue-200 text-blue-700 font-bold py-2 px-4 rounded-xl hover:bg-blue-100 shadow-xs transition active:scale-95";
+                btn.innerText = qw;
+                btn.onclick = () => checkAnswerG1(btn, qw, data.qword, data.rest);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function checkAnswerG1(btn, selected, correct, restOfQuestion) {
+            const feedback = document.getElementById('g1-feedback');
+            const optionsContainer = document.getElementById('g1-options');
+            const blankQuestion = document.getElementById('g1-blank-question');
+            
+            Array.from(optionsContainer.children).forEach(b => b.disabled = true);
+
+            if (selected === correct) {
+                playCorrectSound();
+                btn.className = "bg-emerald-500 text-white font-bold py-2 px-4 rounded-xl shadow-xs transform scale-110 transition";
+                blankQuestion.innerHTML = `<span class="text-emerald-600 underline decoration-2 underline-offset-4">${correct}</span> ${restOfQuestion}`;
+                feedback.innerHTML = `<span class="text-emerald-600 animate-pop inline-block"><i class="fa-solid fa-check-circle"></i> Correct!</span>`;
+                document.getElementById('g1-next-btn').classList.remove('hidden');
+            } else {
+                playWrongSound();
+                btn.className = "bg-red-500 text-white font-bold py-2 px-4 rounded-xl shadow-xs transition opacity-50";
+                blankQuestion.innerHTML = `<span class="text-red-500">( ${selected} )</span> ${restOfQuestion}`;
+                feedback.innerHTML = `<span class="text-red-500"><i class="fa-solid fa-xmark-circle"></i> Try again!</span>`;
+                setTimeout(() => {
+                    renderGame1();
+                }, 1000);
+            }
+        }
+
+        function nextQuestionG1() {
+            g1CurrentIdx++;
+            if (g1CurrentIdx < g1Data.length) {
+                renderGame1();
+            } else {
+                document.getElementById('g1-feedback').innerHTML = `<span class="text-purple-600"><i class="fa-solid fa-star"></i> You are a great teacher!</span>`;
+                document.getElementById('g1-next-btn').innerHTML = `完成！回主頁 <i class="fa-solid fa-house"></i>`;
+                document.getElementById('g1-next-btn').onclick = goHome;
+            }
+        }
+
+        // ================= GAME 2: JOB MATCH =================
+        const jobsList = [
+            { id: 'job1', word: 'Nurse', img: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.49.37+PM+%282%29.jpeg' },
+            { id: 'job2', word: 'Doctor', img: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.49.37+PM.jpeg' },
+            { id: 'job3', word: 'Engineer', img: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.49.37+PM+%281%29.jpeg' },
+            { id: 'job4', word: 'Teacher', img: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.49.36+PM+%281%29.jpeg' },
+            { id: 'job5', word: 'Police', img: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.49.36+PM+%282%29.jpeg' },
+            { id: 'job6', word: 'Lawyer', img: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.49.36+PM.jpeg' }
+        ];
+        
+        let g2SelectedWord = null;
+        let g2SelectedPic = null;
+        let g2MatchesFound = 0;
+
+        function initGame2() {
+            g2SelectedWord = null;
+            g2SelectedPic = null;
+            g2MatchesFound = 0;
+            document.getElementById('g2-win-msg').classList.add('hidden');
+            
+            const shuffledWords = [...jobsList].sort(() => Math.random() - 0.5);
+            const shuffledPics = [...jobsList].sort(() => Math.random() - 0.5);
+
+            const wordsCol = document.getElementById('g2-words-col');
+            const picsCol = document.getElementById('g2-pics-col');
+            wordsCol.innerHTML = '';
+            picsCol.innerHTML = '';
+
+            shuffledWords.forEach(job => {
+                const div = document.createElement('div');
+                div.className = "match-card bg-white border-2 border-slate-200 rounded-xl p-3 text-center font-bold text-slate-700 shadow-xs flex items-center justify-center min-h-[64px]";
+                div.innerText = job.word;
+                div.onclick = () => selectWordG2(div, job.id);
+                wordsCol.appendChild(div);
+            });
+
+            shuffledPics.forEach(job => {
+                const div = document.createElement('div');
+                div.className = "match-card bg-white border-2 border-slate-200 rounded-xl p-2 text-center text-slate-500 shadow-xs flex items-center justify-center min-h-[64px]";
+                div.innerHTML = `<img src="${job.img}" alt="Job pic" class="h-10 w-full object-contain rounded-md pointer-events-none">`;
+                div.onclick = () => selectPicG2(div, job.id);
+                picsCol.appendChild(div);
+            });
+        }
+
+        function selectWordG2(el, id) {
+            if (el.classList.contains('matched')) return;
+            document.querySelectorAll('#g2-words-col .match-card').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+            g2SelectedWord = { el, id };
+            checkMatchG2();
+        }
+
+        function selectPicG2(el, id) {
+            if (el.classList.contains('matched')) return;
+            document.querySelectorAll('#g2-pics-col .match-card').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+            g2SelectedPic = { el, id };
+            checkMatchG2();
+        }
+
+        function checkMatchG2() {
+            if (g2SelectedWord && g2SelectedPic) {
+                if (g2SelectedWord.id === g2SelectedPic.id) {
+                    playCorrectSound();
+                    g2SelectedWord.el.classList.replace('selected', 'matched');
+                    g2SelectedPic.el.classList.replace('selected', 'matched');
+                    g2MatchesFound++;
+                    
+                    if (g2MatchesFound === jobsList.length) {
+                        document.getElementById('g2-win-msg').classList.remove('hidden');
+                    }
+                } else {
+                    playWrongSound();
+                    setTimeout(() => {
+                        if (g2SelectedWord && !g2SelectedWord.el.classList.contains('matched')) g2SelectedWord.el.classList.remove('selected');
+                        if (g2SelectedPic && !g2SelectedPic.el.classList.contains('matched')) g2SelectedPic.el.classList.remove('selected');
+                        g2SelectedWord = null;
+                        g2SelectedPic = null;
+                    }, 500);
+                    return;
+                }
+                g2SelectedWord = null;
+                g2SelectedPic = null;
+            }
+        }
+
+        // ================= GAME 3: ACTIVITY DRAG & DROP =================
+        const activities = [
+            { id: 'act1', name: 'Painting', emoji: '🎨', imgUrl: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.21.10+PM.jpeg' },
+            { id: 'act2', name: 'Board game', emoji: '🎲', imgUrl: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.21.10+PM+%281%29.jpeg' },
+            { id: 'act3', name: 'Dancing', emoji: '🩰', imgUrl: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.21.10+PM+%282%29.jpeg' },
+            { id: 'act4', name: 'Singing', emoji: '🎤', imgUrl: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.21.11+PM.jpeg' }
         ];
 
-        // Vocabulary Database with parts of speech, translations, English definitions and context-based examples
-        const vocabulary = {
-            cousins: {
-                title: "cousins",
-                pos: "noun (plural)",
-                zh: "堂/表兄弟姊妹",
-                en: "The children of your aunt or uncle.",
-                example: "I am going to play basketball with my cousins next Sunday."
-            },
-            ordinary: {
-                title: "ordinary",
-                pos: "adjective",
-                zh: "尋常的、普通的、平凡的",
-                en: "Normal or average; not special, different, or unusual in any way.",
-                example: "It was just an ordinary school day, nothing exciting happened."
-            },
-            block: {
-                title: "block",
-                pos: "noun",
-                zh: "住宅大廈、大樓",
-                en: "A tall residential building containing many flats or apartments.",
-                example: "There are fifty families living in our apartment block."
-            },
-            lifts: {
-                title: "lifts",
-                pos: "noun (plural)",
-                zh: "升降機、電梯",
-                en: "Elevators designed to carry people or goods up and down between floors.",
-                example: "The lifts in our school are only for teachers and injured students."
-            },
-            agree: {
-                title: "agree",
-                pos: "verb",
-                zh: "同意、贊同",
-                en: "To share the same opinion or feel the same way as someone else.",
-                example: "I agree with you that the English quiz was quite difficult."
-            },
-            twins: {
-                title: "twins",
-                pos: "noun (plural)",
-                zh: "雙胞胎、孿生兒",
-                en: "Two children born to the same mother at the exact same time.",
-                example: "The twins look so much alike that even their parents confuse them sometimes."
-            },
-            younger: {
-                title: "younger",
-                pos: "adjective (comparative)",
-                zh: "較年輕的、年紀較小的",
-                en: "Of a less advanced age than someone else.",
-                example: "My younger sister is in primary primary school, while I am in secondary school."
-            },
-            fringe: {
-                title: "fringe",
-                pos: "noun",
-                zh: "劉海 (額前短髮)",
-                en: "Short hair cut straight across the forehead.",
-                example: "She has to trim her fringe every month because it grows into her eyes."
-            },
-            usually: {
-                title: "usually",
-                pos: "adverb",
-                zh: "通常、經常",
-                en: "Under normal circumstances; in the way that most often happens.",
-                example: "I usually do my homework immediately after getting home."
-            },
-            ponytail: {
-                title: "ponytail",
-                pos: "noun",
-                zh: "馬尾辮",
-                en: "A hairstyle in which hair is pulled back and tied at the back of the head.",
-                example: "She tied her hair into a neat ponytail for the PE class."
-            },
-            curly: {
-                title: "curly",
-                pos: "adjective",
-                zh: "捲曲的",
-                en: "Having curves, curls, or spirals; not straight.",
-                example: "Her hair is naturally curly, so she doesn't need to perm it."
-            },
-            engineer: {
-                title: "engineer",
-                pos: "noun",
-                zh: "工程師",
-                en: "A professional who designs, builds, or maintains engines, machines, or public structures.",
-                example: "His uncle works as a civil engineer building bridges and roads."
-            },
-            talkative: {
-                title: "talkative",
-                pos: "adjective",
-                zh: "健談的、話多的",
-                en: "Fond of talking; speaking a lot.",
-                example: "Our class monitor is very talkative, so he is good at giving presentations."
-            },
-            seldom: {
-                title: "seldom",
-                pos: "adverb",
-                zh: "很少、罕有、極少",
-                en: "Not common; rarely happening; almost never.",
-                example: "We seldom eat fast food because my mother prefers cooking healthy meals."
-            },
-            hobbies: {
-                title: "hobbies",
-                pos: "noun (plural)",
-                zh: "業餘愛好、興趣特長",
-                en: "Activities done regularly in one's leisure time for pleasure and relaxation.",
-                example: "My father's hobbies include reading novels and hiking."
-            },
-            fills: {
-                title: "fills",
-                pos: "verb (singular present)",
-                zh: "充滿、填滿",
-                en: "To make something full; to spread through all parts of a space.",
-                example: "The delicious smell of fresh cookies fills the entire bakery."
-            },
-            bossy: {
-                title: "bossy",
-                pos: "adjective",
-                zh: "愛指揮別人的、專橫霸道的",
-                en: "Always telling other people what to do in an annoying or commanding way.",
-                example: "No one likes to work with him because he is always so bossy during group projects."
-            },
-            knocks: {
-                title: "knocks",
-                pos: "verb (singular present)",
-                zh: "敲擊 (通常指敲門)",
-                en: "Hits a hard surface (like a door) with knuckles to gain attention.",
-                example: "He always knocks loudly three times before opening my bedroom door."
-            },
-            generous: {
-                title: "generous",
-                pos: "adjective",
-                zh: "大方的、寬容慷慨的",
-                en: "Willing to give money, help, kindness, or share resources freely.",
-                example: "Thank you for being so generous and sharing your lunch with me."
-            },
-            honestly: {
-                title: "honestly",
-                pos: "adverb",
-                zh: "老實說、誠實地",
-                en: "In a truthful, fair, and sincere way (used to state a strong real opinion).",
-                example: "Honestly, I think we should cancel the picnic since it is raining heavily."
-            },
-            holiday: {
-                title: "holiday",
-                pos: "noun",
-                zh: "假期、節日",
-                en: "A day or period of time when you do not go to school or work.",
-                example: "We went to Japan for our summer holiday last year."
-            },
-            "peace and quiet": {
-                title: "peace and quiet",
-                pos: "phrase / idiom",
-                zh: "安寧、寧靜的生活",
-                en: "A state of calmness, quietness, and freedom from stress or disturbance.",
-                example: "After a noisy day at school, I just want some peace and quiet in my bedroom."
-            },
-            immediately: {
-                title: "immediately",
-                pos: "adverb",
-                zh: "立即、馬不停蹄地、即刻",
-                en: "Right away; instantly; without any delay or waiting.",
-                example: "If you feel sick, please tell your class teacher immediately."
-            }
-        };
+        let activeDraggable = null;
+        let tappedSelectedDraggable = null; // Support tap-to-select for effortless mobile support
+        let initialX, initialY, currentX, currentY;
+        
+        let g3Queue = [];
+        let g3CurrentTarget = null;
 
-        // Application State
-        let currentParagraphIndex = 0;
-        let selectedWordKey = null;
-
-        //        // Initialize App on Window Load
-        window.onload = function() {
-            renderParagraph();
-            setupInteractiveListeners();
-            updateNavigation();
-        };
-
-        // Render Paragraph Page
-        function renderParagraph() {
-            const data = paragraphs[currentParagraphIndex];
+        function initGame3() {
+            const container = document.getElementById('g3-items-container');
+            container.innerHTML = '';
+            tappedSelectedDraggable = null;
             
-            // 1. Update text content
-            const container = document.getElementById("paragraph-container");
-            container.innerHTML = data.text;
-            
-            // Apply Font Size class
-            applyFontSizeToContainer();
+            document.getElementById('g3-target-text').innerText = 'Drop or tap here!';
+            document.getElementById('g3-dropzone').classList.remove('border-emerald-500', 'bg-emerald-50');
 
-            // 2. Set Paragraph badge index
-            document.getElementById("para-badge").innerHTML = `PARAGRAPH [${data.index}] / 6`;
+            g3Queue = [...activities].sort(() => Math.random() - 0.5);
             
-            // 3. Render Paragraph Key Vocabulary Pills in Footer of panel
-            const pillContainer = document.getElementById("vocab-pill-container");
-            pillContainer.innerHTML = "";
-            data.words.forEach(wKey => {
-                const wordData = vocabulary[wKey];
-                if (wordData) {
-                    const button = document.createElement("button");
-                    button.className = "text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 px-3.5 py-2 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-lg border border-slate-200 transition duration-150 shadow-sm sm:shadow-none active:scale-95";
-                    button.innerHTML = wordData.title;
-                    button.onclick = () => selectWord(wKey);
-                    pillContainer.appendChild(button);
-                }
+            activities.forEach((act, idx) => {
+                const el = document.createElement('div');
+                el.className = `draggable bg-white p-3 rounded-2xl shadow-md border border-slate-200 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-slate-50 transition-transform active:scale-95 w-16 h-16 relative`;
+                
+                el.innerHTML = `<span class="text-4xl drop-shadow-xs pointer-events-none">${act.emoji}</span>`;
+                el.dataset.id = act.id;
+                el.dataset.imgUrl = act.imgUrl;
+                el.dataset.name = act.name;
+
+                // Bind both dragging and tapping events
+                setupDraggable(el);
+                container.appendChild(el);
             });
 
-            // 4. Setup Listeners inside text
-            setupInteractiveListeners();
+            // Make the dropzone also responsive to tapping
+            const dropzone = document.getElementById('g3-dropzone');
+            dropzone.onclick = handleDropzoneTap;
+
+            nextG3Challenge();
         }
-
-        // Setup Event Listeners for clickable span elements
-        function setupInteractiveListeners() {
-            const spans = document.querySelectorAll(".vocab-word");
-            spans.forEach(span => {
-                const wordKey = span.getAttribute("data-word");
-                
-                // Highlight active if selected
-                if (wordKey === selectedWordKey) {
-                    span.classList.add("active");
-                } else {
-                    span.classList.remove("active");
-                }
-
-                // Click event
-                span.onclick = (e) => {
-                    e.stopPropagation(); // Avoid bubblings
-                    selectWord(wordKey);
-                };
-            });
-        }
-
-        // Set active Vocabulary in Sidebar Display Box
-        function selectWord(wordKey) {
-            selectedWordKey = wordKey;
+        
+        function nextG3Challenge() {
+            const dropzone = document.getElementById('g3-dropzone');
+            const teacherView = document.getElementById('g3-teacher-view');
+            const targetImg = document.getElementById('g3-target-image');
             
-            // Highlight active class in text dynamically
-            const spans = document.querySelectorAll(".vocab-word");
-            spans.forEach(span => {
-                if (span.getAttribute("data-word") === wordKey) {
-                    span.classList.add("active");
-                } else {
-                    span.classList.remove("active");
-                }
-            });
-
-            const detailsBox = document.getElementById("vocab-details");
-            const placeholder = document.getElementById("vocab-placeholder");
-            const data = vocabulary[wordKey];
-
-            if (data && detailsBox && placeholder) {
-                // Populate data
-                document.getElementById("vocab-title").innerText = data.title;
-                document.getElementById("vocab-pos").innerText = data.pos;
-                document.getElementById("vocab-zh").innerText = data.zh;
-                document.getElementById("vocab-en").innerText = data.en;
-                document.getElementById("vocab-example").innerText = `"${data.example}"`;
-
-                // Toggle visibility
-                placeholder.classList.add("hidden");
-                detailsBox.classList.remove("hidden");
-                
-                // Show Mobile Bottom Sheet
-                const dictPanel = document.getElementById("dictionary-panel");
-                const backdrop = document.getElementById("mobile-dict-backdrop");
-                
-                if (window.innerWidth < 1024) {
-                    dictPanel.classList.remove("translate-y-full");
-                    backdrop.classList.remove("hidden");
-                    document.body.style.overflow = 'hidden'; // Prevent background scrolling
-                }
-            } else if (placeholder && detailsBox) {
-                // Show default
-                placeholder.classList.remove("hidden");
-                detailsBox.classList.add("hidden");
-            }
-        }
-
-        // Close Dictionary Modal on Mobile
-        function closeDictionary() {
-            const dictPanel = document.getElementById("dictionary-panel");
-            const backdrop = document.getElementById("mobile-dict-backdrop");
-            
-            if (window.innerWidth < 1024) {
-                dictPanel.classList.add("translate-y-full");
-                backdrop.classList.add("hidden");
-                document.body.style.overflow = ''; // Restore scrolling
-                
-                // Optional: clear active selection so it feels "closed"
-                selectedWordKey = null;
-                const spans = document.querySelectorAll(".vocab-word");
-                spans.forEach(span => span.classList.remove("active"));
-            }
-        }
-
-        // Change between Paragraph Slides
-        function navigate(direction) {
-            const nextIndex = currentParagraphIndex + direction;
-            if (nextIndex >= 0 && nextIndex < paragraphs.length) {
-                currentParagraphIndex = nextIndex;
-                
-                // Reset active selected word on paragraph changes to avoid confusion
-                selectedWordKey = null;
-                const detailsBox = document.getElementById("vocab-details");
-                const placeholder = document.getElementById("vocab-placeholder");
-                
-                if (placeholder && detailsBox) {
-                    placeholder.classList.remove("hidden");
-                    detailsBox.classList.add("hidden");
-                }
-
-                // Render page
-                renderParagraph();
-                updateNavigation();
-
-                // Stop voice synthesis if playing
-                if (window.speechSynthesis) {
-                    window.speechSynthesis.cancel();
-                    document.getElementById("btn-read-aloud").innerHTML = '<i class="fa-solid fa-volume-high"></i> <span>聆聽段落</span>';
-                    isReadingParagraph = false;
-                }
-            }
-        }
-
-        // Update Nav dots and buttons
-        function updateNavigation() {
-            const btnPrev = document.getElementById("btn-prev");
-            const btnNext = document.getElementById("btn-next");
-            
-            // Enable/Disable buttons safely
-            btnPrev.disabled = currentParagraphIndex === 0;
-            if (currentParagraphIndex === paragraphs.length - 1) {
-                btnNext.innerHTML = '完成閱讀 <i class="fa-solid fa-circle-check"></i>';
-                btnNext.classList.remove("bg-indigo-600");
-                btnNext.classList.add("bg-emerald-600", "hover:bg-emerald-700");
-            } else {
-                btnNext.innerHTML = '下一段 <i class="fa-solid fa-arrow-right"></i>';
-                btnNext.classList.remove("bg-emerald-600");
-                btnNext.classList.add("bg-indigo-600", "hover:bg-indigo-700");
-            }
-
-            // Generate indicator dots
-            const dotsContainer = document.getElementById("dots-indicator");
-            dotsContainer.innerHTML = "";
-            paragraphs.forEach((p, idx) => {
-                const dot = document.createElement("button");
-                dot.onclick = () => {
-                    currentParagraphIndex = idx;
-                    selectedWordKey = null;
-                    renderParagraph();
-                    updateNavigation();
-                };
-                // Make dots slightly larger for mobile touch
-                if (idx === currentParagraphIndex) {
-                    dot.className = "w-6 sm:w-6 h-3 sm:h-2.5 rounded-full bg-indigo-600 transition-all duration-300";
-                } else {
-                    dot.className = "w-3 sm:w-2.5 h-3 sm:h-2.5 rounded-full bg-slate-200 hover:bg-slate-300 transition-all duration-300";
-                }
-                dotsContainer.appendChild(dot);
-            });
-        }
-
-        // Text Size modifier
-        let activeFontSize = "medium";
-        function changeFontSize(size) {
-            activeFontSize = size;
-            
-            // Adjust buttons active styling
-            const sBtn = document.getElementById("btn-fs-s");
-            const mBtn = document.getElementById("btn-fs-m");
-            const lBtn = document.getElementById("btn-fs-l");
-
-            [sBtn, mBtn, lBtn].forEach(btn => btn.className = "px-2.5 py-1 text-slate-600 hover:text-slate-900 rounded-md transition");
-            
-            if (size === 'small') {
-                sBtn.className = "px-2.5 py-1 text-xs font-semibold rounded-md bg-white shadow-xs text-indigo-600 transition";
-            } else if (size === 'medium') {
-                mBtn.className = "px-3 py-1 text-sm font-semibold rounded-md bg-white shadow-xs text-indigo-600 transition";
-            } else {
-                lBtn.className = "px-2.5 py-1 text-lg font-bold rounded-md bg-white shadow-xs text-indigo-600 transition";
-            }
-
-            applyFontSizeToContainer();
-        }
-
-        function applyFontSizeToContainer() {
-            const container = document.getElementById("paragraph-container");
-            container.className = "fade-in leading-relaxed text-slate-700 tracking-wide select-text min-h-[160px]";
-            
-            if (activeFontSize === "small") {
-                container.classList.add("text-base");
-            } else if (activeFontSize === "medium") {
-                container.classList.add("text-lg", "md:text-xl");
-            } else {
-                container.classList.add("text-2xl", "md:text-3xl", "leading-loose");
-            }
-        }
-
-        // Toggle Helpful Tips Panel
-        function toggleTips() {
-            const tips = document.getElementById("tips-banner");
-            tips.classList.toggle("hidden");
-        }
-
-        //        // Text Speech (Audio Speak) Feature
-        let isReadingParagraph = false;
-        function readAloudParagraph() {
-            if (!('speechSynthesis' in window)) {
-                alert("抱歉！您的瀏覽器不支援語音朗讀系統。");
+            if (g3Queue.length === 0) {
+                teacherView.classList.remove('hidden');
+                targetImg.classList.add('hidden');
+                teacherView.innerHTML = `<div class="text-4xl mb-1 animate-pop">🎉</div><h3 class="text-xl font-bold text-emerald-600 comic-font">Well Done!</h3>`;
+                document.getElementById('g3-target-text').innerText = 'Completed!';
                 return;
             }
 
-            if (isReadingParagraph) {
+            g3CurrentTarget = g3Queue.shift();
+            
+            teacherView.classList.remove('hidden');
+            targetImg.classList.add('hidden');
+            targetImg.classList.remove('animate-pop');
+            document.getElementById('g3-target-text').innerText = 'Listen & Drop here!';
+            
+            setTimeout(playG3Audio, 800);
+        }
+
+        function playG3Audio() {
+            if (!g3CurrentTarget) return;
+            if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
-                document.getElementById("btn-read-aloud").innerHTML = '<i class="fa-solid fa-volume-high"></i> <span>聆聽段落</span>';
-                isReadingParagraph = false;
+                const utterance = new SpeechSynthesisUtterance(g3CurrentTarget.name);
+                
+                const voices = window.speechSynthesis.getVoices();
+                const enVoice = voices.find(v => v.lang.startsWith('en-') && v.name.includes('Google'));
+                if(enVoice) utterance.voice = enVoice;
+                
+                utterance.rate = 0.8;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // --- Dragging & Touch Engine ---
+        function setupDraggable(el) {
+            // Drag listeners
+            el.addEventListener('touchstart', dragStart, {passive: false});
+            el.addEventListener('touchmove', drag, {passive: false});
+            el.addEventListener('touchend', dragEnd, {passive: false});
+            el.addEventListener('mousedown', dragStart);
+            
+            // Tap fallback helper
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                handleElementTap(el);
+            });
+        }
+
+        // Handle Tap selection (Mobile UX fallback)
+        function handleElementTap(el) {
+            document.querySelectorAll('.draggable').forEach(d => d.classList.remove('tapped-selected'));
+            
+            if (tappedSelectedDraggable === el) {
+                tappedSelectedDraggable = null;
+                document.getElementById('g3-target-text').innerText = 'Listen & Drop here!';
+            } else {
+                tappedSelectedDraggable = el;
+                el.classList.add('tapped-selected');
+                document.getElementById('g3-target-text').innerText = 'Now tap the Girl photo!';
+            }
+        }
+
+        // Trigger action when user taps on the dropzone while an emoji is selected
+        function handleDropzoneTap() {
+            if (!tappedSelectedDraggable) return;
+            
+            const dropzone = document.getElementById('g3-dropzone');
+            
+            if (tappedSelectedDraggable.dataset.id === g3CurrentTarget.id) {
+                executeMatchSuccess(tappedSelectedDraggable);
+            } else {
+                executeMatchFailure(tappedSelectedDraggable);
+            }
+            
+            tappedSelectedDraggable.classList.remove('tapped-selected');
+            tappedSelectedDraggable = null;
+        }
+
+        function dragStart(e) {
+            tappedSelectedDraggable = null; // Reset tap selections on drag
+            document.querySelectorAll('.draggable').forEach(d => d.classList.remove('tapped-selected'));
+
+            if (e.type === 'touchstart') {
+                activeDraggable = e.target.closest('.draggable');
+                initialX = e.touches[0].clientX - activeDraggable.offsetLeft;
+                initialY = e.touches[0].clientY - activeDraggable.offsetTop;
+            } else {
+                if (!e.target.closest('.draggable')) return;
+                activeDraggable = e.target.closest('.draggable');
+                initialX = e.clientX - activeDraggable.offsetLeft;
+                initialY = e.clientY - activeDraggable.offsetTop;
+            }
+            if (activeDraggable) {
+                activeDraggable.style.zIndex = '50';
+                activeDraggable.style.position = 'absolute';
+                activeDraggable.style.transform = 'scale(1.15)';
+                activeDraggable.style.pointerEvents = 'none'; // Avoid interception during hover
+            }
+        }
+
+        function drag(e) {
+            if (!activeDraggable) return;
+            e.preventDefault();
+            
+            if (e.type === 'touchmove') {
+                currentX = e.touches[0].clientX - initialX;
+                currentY = e.touches[0].clientY - initialY;
+            } else {
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+            }
+            
+            activeDraggable.style.left = `${currentX}px`;
+            activeDraggable.style.top = `${currentY}px`;
+
+            checkDropzoneHover();
+        }
+
+        function checkDropzoneHover() {
+            const dropzone = document.getElementById('g3-dropzone');
+            const drRect = activeDraggable.getBoundingClientRect();
+            const dzRect = dropzone.getBoundingClientRect();
+
+            const overlap = !(drRect.right < dzRect.left || 
+                              drRect.left > dzRect.right || 
+                              drRect.bottom < dzRect.top || 
+                              drRect.top > dzRect.bottom);
+
+            if (overlap) {
+                dropzone.classList.add('active-zone');
+            } else {
+                dropzone.classList.remove('active-zone');
+            }
+            return overlap;
+        }
+
+        function dragEnd(e) {
+            if (!activeDraggable) return;
+            
+            const isOverlap = checkDropzoneHover();
+            const dropzone = document.getElementById('g3-dropzone');
+            dropzone.classList.remove('active-zone');
+
+            // Restore drag styling
+            activeDraggable.style.pointerEvents = 'auto';
+            activeDraggable.style.transform = 'scale(1)';
+            activeDraggable.style.zIndex = '10';
+
+            if (isOverlap) {
+                if (activeDraggable.dataset.id === g3CurrentTarget.id) {
+                    executeMatchSuccess(activeDraggable);
+                } else {
+                    executeMatchFailure(activeDraggable);
+                }
+            } else {
+                // Return home
+                activeDraggable.style.position = 'relative';
+                activeDraggable.style.left = 'auto';
+                activeDraggable.style.top = 'auto';
+            }
+
+            activeDraggable = null;
+        }
+
+        // Shared match responses
+        function executeMatchSuccess(element) {
+            playCorrectSound();
+            const imgUrl = element.dataset.imgUrl;
+            const actName = element.dataset.name;
+            const dropzone = document.getElementById('g3-dropzone');
+            
+            document.getElementById('g3-teacher-view').classList.add('hidden');
+            
+            const targetImg = document.getElementById('g3-target-image');
+            targetImg.src = imgUrl;
+            targetImg.classList.remove('hidden');
+            targetImg.classList.add('animate-pop');
+            
+            document.getElementById('g3-target-text').innerText = actName;
+            dropzone.classList.add('border-emerald-500', 'bg-emerald-50');
+            
+            element.style.display = 'none';
+            
+            setTimeout(() => {
+                dropzone.classList.remove('border-emerald-500', 'bg-emerald-50');
+                nextG3Challenge();
+            }, 2500);
+        }
+
+        function executeMatchFailure(element) {
+            playWrongSound();
+            const dropzone = document.getElementById('g3-dropzone');
+            dropzone.classList.add('border-red-500', 'bg-red-50');
+            document.getElementById('g3-target-text').innerText = 'Oops! Try again.';
+            
+            setTimeout(() => {
+                dropzone.classList.remove('border-red-500', 'bg-red-50');
+                document.getElementById('g3-target-text').innerText = 'Listen & Drop here!';
+            }, 1000);
+            
+            element.style.position = 'relative';
+            element.style.left = 'auto';
+            element.style.top = 'auto';
+        }
+
+        // Mouse Drag helper bindings
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', dragEnd);
+
+        // ================= GAME 4: DICTATION =================
+        const dictationWords = ['immediately', 'instantly', 'ordinary'];
+        let g4CurrentIdx = 0;
+        let g4Mode = 'normal';
+        let g4CorrectionCount = 0;
+
+        function initGame4() {
+            g4CurrentIdx = 0;
+            g4Mode = 'normal';
+            renderDictationWord();
+            
+            const inputField = document.getElementById('g4-input');
+            const newField = inputField.cloneNode(true);
+            inputField.parentNode.replaceChild(newField, inputField);
+            
+            newField.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !newField.disabled) {
+                    submitDictation();
+                }
+            });
+        }
+
+        function renderDictationWord() {
+            document.getElementById('g4-progress').innerText = `Word ${g4CurrentIdx + 1} of ${dictationWords.length}`;
+            g4Mode = 'normal';
+            g4CorrectionCount = 0;
+            
+            const inputField = document.getElementById('g4-input');
+            inputField.value = '';
+            inputField.disabled = false;
+            
+            inputField.classList.remove('border-emerald-500', 'border-red-500', 'bg-emerald-50', 'bg-red-50', 'text-emerald-600', 'text-red-500', 'line-through');
+            inputField.classList.add('border-slate-200', 'text-slate-700');
+            
+            document.getElementById('g4-feedback').innerHTML = '';
+            
+            const submitBtn = document.getElementById('g4-submit-btn');
+            submitBtn.classList.remove('hidden');
+            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> 提交答案 (Submit)';
+            
+            document.getElementById('g4-next-btn').classList.add('hidden');
+            document.getElementById('g4-finish-btn').classList.add('hidden');
+            
+            setTimeout(() => inputField.focus(), 100);
+        }
+
+        function playDictationAudio() {
+            if (!('speechSynthesis' in window)) {
+                document.getElementById('g4-progress').innerText = "Audio not supported here.";
+                return;
+            }
+            
+            window.speechSynthesis.cancel();
+            const word = dictationWords[g4CurrentIdx];
+            const utterance = new SpeechSynthesisUtterance(word);
+            
+            const voices = window.speechSynthesis.getVoices();
+            const enVoice = voices.find(v => v.lang.startsWith('en-') && v.name.includes('Google'));
+            if(enVoice) utterance.voice = enVoice;
+            
+            utterance.rate = 0.8;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function submitDictation() {
+            const inputField = document.getElementById('g4-input');
+            const userAnswer = inputField.value.trim().toLowerCase();
+            const correctAnswer = dictationWords[g4CurrentIdx].toLowerCase();
+            const feedbackArea = document.getElementById('g4-feedback');
+            const submitBtn = document.getElementById('g4-submit-btn');
+
+            if (userAnswer === '') {
+                feedbackArea.innerHTML = `<span class="text-rose-500 font-bold bg-rose-100 px-3 py-1 rounded-lg text-sm"><i class="fa-solid fa-triangle-exclamation"></i> 請輸入答案！ (Please type an answer)</span>`;
                 return;
             }
 
-            const rawText = paragraphs[currentParagraphIndex].rawText;
-            const utterance = new SpeechSynthesisUtterance(rawText);
-            
-            // Find English voice natively
-            const voices = window.speechSynthesis.getVoices();
-            const englishVoice = voices.find(voice => voice.lang.startsWith('en-'));
-            if (englishVoice) {
-                utterance.voice = englishVoice;
+            if (g4Mode === 'normal') {
+                if (userAnswer === correctAnswer) {
+                    playCorrectSound();
+                    inputField.disabled = true;
+                    submitBtn.classList.add('hidden');
+                    
+                    // Softly hide mobile keyboard
+                    inputField.blur();
+                    
+                    inputField.classList.replace('border-slate-200', 'border-emerald-500');
+                    inputField.classList.remove('text-slate-700');
+                    inputField.classList.add('bg-emerald-50', 'text-emerald-600');
+                    
+                    feedbackArea.innerHTML = `
+                        <div class="animate-pop text-emerald-600 font-bold text-xl mb-1">
+                            <i class="fa-solid fa-check-circle"></i> Excellent!
+                        </div>
+                    `;
+                    
+                    if (g4CurrentIdx < dictationWords.length - 1) {
+                        document.getElementById('g4-next-btn').classList.remove('hidden');
+                    } else {
+                        document.getElementById('g4-finish-btn').classList.remove('hidden');
+                    }
+                } else {
+                    playWrongSound();
+                    g4Mode = 'correction';
+                    g4CorrectionCount = 0;
+                    
+                    inputField.classList.replace('border-slate-200', 'border-red-500');
+                    inputField.classList.remove('text-slate-700');
+                    inputField.classList.add('bg-red-50', 'text-red-500', 'line-through');
+                    
+                    feedbackArea.innerHTML = `
+                        <div class="text-red-500 font-bold text-sm mb-1"><i class="fa-solid fa-xmark-circle"></i> Oops! That's not quite right.</div>
+                        <div class="text-slate-600 font-medium text-xs mb-2">Correct Answer: 
+                            <span class="text-emerald-600 font-bold text-lg ml-2 comic-font tracking-wider bg-emerald-100 px-3 py-1 rounded-lg inline-block">${correctAnswer}</span>
+                        </div>
+                        <div class="text-amber-600 font-bold bg-amber-100 p-2 rounded-lg text-xs animate-pulse">
+                            請輸入正確答案 3 次作爲改正。<br>(Type it correctly 3 times: 0/3)
+                        </div>
+                    `;
+                    
+                    submitBtn.innerHTML = '<i class="fa-solid fa-pen"></i> 改正 (Correct)';
+                    
+                    setTimeout(() => {
+                        inputField.value = '';
+                        inputField.classList.remove('line-through', 'border-red-500', 'bg-red-50', 'text-red-500');
+                        inputField.classList.add('border-slate-200', 'text-slate-700');
+                        inputField.focus();
+                    }, 1500);
+                }
+            } else if (g4Mode === 'correction') {
+                if (userAnswer === correctAnswer) {
+                    playCorrectSound();
+                    g4CorrectionCount++;
+                    inputField.value = '';
+                    
+                    if (g4CorrectionCount < 3) {
+                        feedbackArea.innerHTML = `
+                            <div class="text-emerald-600 font-bold text-sm mb-1"><i class="fa-solid fa-check"></i> Good!</div>
+                            <div class="text-slate-600 font-medium text-xs mb-1">Correct Answer: <span class="text-emerald-600 font-bold text-base ml-1">${correctAnswer}</span></div>
+                            <div class="text-amber-600 font-bold bg-amber-100 p-2 rounded-lg text-xs">
+                                繼續改正。<br>(Type it correctly: ${g4CorrectionCount}/3)
+                            </div>
+                        `;
+                        inputField.focus();
+                    } else {
+                        g4Mode = 'normal';
+                        feedbackArea.innerHTML = `
+                            <div class="text-emerald-600 font-bold text-base mb-1"><i class="fa-solid fa-star"></i> 改正完成！ (Correction Done)</div>
+                            <div class="text-blue-600 font-bold mt-1 text-xs animate-pulse">現在重新默寫此字！ (Now let's retest!)</div>
+                        `;
+                        submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> 提交答案 (Submit)';
+                        
+                        setTimeout(() => {
+                             inputField.value = '';
+                             playDictationAudio();
+                             feedbackArea.innerHTML = `
+                                <div class="text-blue-600 font-bold text-xs"><i class="fa-solid fa-headphones"></i> 請聽讀音並拼寫出單字。 (Listen and type)</div>
+                             `;
+                             inputField.focus();
+                        }, 2000);
+                    }
+                } else {
+                    playWrongSound();
+                    inputField.value = '';
+                    feedbackArea.innerHTML = `
+                        <div class="text-red-500 font-bold text-sm mb-1"><i class="fa-solid fa-xmark"></i> 串錯了，請對著抄！</div>
+                        <div class="text-slate-600 font-medium text-xs mb-1">Correct Answer: <span class="text-emerald-600 font-bold text-base ml-1">${correctAnswer}</span></div>
+                        <div class="text-amber-600 font-bold bg-amber-100 p-2 rounded-lg text-xs">
+                            請輸入正確答案 3 次作爲改正。<br>(Type it correctly: ${g4CorrectionCount}/3)
+                        </div>
+                    `;
+                    inputField.focus();
+                }
             }
-            utterance.rate = 0.85; // Slightly slower, highly suitable for S1 students
-
-            utterance.onend = function() {
-                document.getElementById("btn-read-aloud").innerHTML = '<i class="fa-solid fa-volume-high"></i> <span>聆聽段落</span>';
-                isReadingParagraph = false;
-            };
-
-            document.getElementById("btn-read-aloud").innerHTML = '<i class="fa-solid fa-circle-stop text-red-500 animate-pulse"></i> <span class="text-red-600">停止播放</span>';
-            isReadingParagraph = true;
-            window.speechSynthesis.speak(utterance);
         }
 
-        // Speak specific sidebar word
-        function speakCurrentWord() {
-            if (!selectedWordKey || !('speechSynthesis' in window)) return;
-            
-            window.speechSynthesis.cancel(); // cancel current speak
-            const wordToSpeak = vocabulary[selectedWordKey].title;
-            const utterance = new SpeechSynthesisUtterance(wordToSpeak);
-            
-            const voices = window.speechSynthesis.getVoices();
-            const englishVoice = voices.find(voice => voice.lang.startsWith('en-'));
-            if (englishVoice) {
-                utterance.voice = englishVoice;
-            }
-            utterance.rate = 0.8; // clear speed
-            window.speechSynthesis.speak(utterance);
+        function nextDictationWord() {
+            g4CurrentIdx++;
+            renderDictationWord();
         }
+
     </script>
 </body>
 </html>
