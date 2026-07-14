@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fred's Blog - Interactive Reading Assistant</title>
+    <!-- Tailwind CSS for modern responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Inter & Comic Neue for kid-friendly yet professional feel -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .comic-font {
+            font-family: 'Comic Neue', cursive;
+        }
+        /* Custom highlight for interactive vocabulary */
+        .vocab-word {
+            position: relative;
+            cursor: pointer;
+            border-bottom: 2px dashed #3b82f6; /* Tailwind blue-500 */
+            font-weight: 700;
+            color: #1d4ed8; /* Tailwind blue-700 */
+            padding: 0 2px;
+            transition: all 0.2s ease-in-out;
+            background-color: rgba(219, 234, 254, 0.4); /* Subtle blue background */
+            border-radius: 4px;
+        }
+        .vocab-word:hover {
+            background-color: rgba(191, 219, 254, 1);
+            color: #1e40af; /* Tailwind blue-800 */
+        }
+        .vocab-word.active {
+            background-color: #3b82f6;
+            color: #ffffff;
+            border-bottom-color: transparent;
+        }
+        /* Fade transition effect */
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col text-slate-800 antialiased">
+
+    <!-- -->
+    <!-- HEADER SECTION -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
+        <div class="max-w-7xl mx-auto px-3 py-3 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center justify-between w-full sm:w-auto">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-indigo-600 text-white p-2 rounded-xl shadow-md">
+                        <i class="fa-solid fa-book-open text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">Fred's Blog</h1>
+                        <p class="text-[10px] sm:text-xs text-slate-500 font-medium line-clamp-1">Adapted from Pre-S2 English Course</p>
+                    </div>
+                </div>
+                <!-- Mobile Tips Toggle -->
+                <button onclick="toggleTips()" class="sm:hidden bg-indigo-50 text-indigo-700 w-9 h-9 flex items-center justify-center rounded-lg border border-indigo-100">
+                    <i class="fa-solid fa-circle-question"></i>
+                </button>
+            </div>
+            
+            <!-- Font-size Controls & Reading Progress bar -->
+            <div class="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                <!-- Text size adjustments - Larger touch targets for mobile -->
+                <div class="flex bg-slate-100 p-1.5 rounded-xl items-center border border-slate-200 w-full sm:w-auto justify-center">
+                    <button onclick="changeFontSize('small')" id="btn-fs-s" class="px-4 py-1.5 sm:px-2.5 sm:py-1 text-sm sm:text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition flex-1">A</button>
+                    <button onclick="changeFontSize('medium')" id="btn-fs-m" class="px-4 py-1.5 sm:px-3 sm:py-1 text-base sm:text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 bg-white shadow-xs text-indigo-600 transition flex-1">A</button>
+                    <button onclick="changeFontSize('large')" id="btn-fs-l" class="px-4 py-1.5 sm:px-2.5 sm:py-1 text-xl sm:text-lg font-bold rounded-lg text-slate-600 hover:text-slate-900 transition flex-1">A</button>
+                </div>
+                <!-- Desktop Tips toggle -->
+                <button onclick="toggleTips()" class="hidden sm:flex bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-semibold px-4 py-2 rounded-xl border border-indigo-100 transition items-center gap-2">
+                    <i class="fa-solid fa-circle-question"></i> <span>閱讀小指引</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT container -->
+    <main class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
+        
+        <!-- LEFT SIDE: Text Reading Area & Navigation (Col: 7) -->
+        <section class="lg:col-span-7 flex flex-col space-y-6">
+            
+            <!-- Help Tips Banner -->
+            <div id="tips-banner" class="bg-indigo-50 border border-indigo-200 text-indigo-900 p-4 rounded-2xl flex items-start gap-3 relative transition-all duration-300">
+                <i class="fa-solid fa-wand-magic-sparkles text-xl text-indigo-600 mt-0.5"></i>
+                <div>
+                    <h3 class="font-bold text-sm">💡 中一英文閱讀法寶！</h3>
+                    <p class="text-xs text-indigo-800 leading-relaxed mt-1">
+                        文章已被拆分成 6 段。請跟隨頁碼逐段閱讀。遇到<strong>藍色加底線的字詞</strong>時，直接<strong>點擊它</strong>，右邊的「智能單字盒」就會顯示中文意思及發音，快試試看吧！
+                    </p>
+                </div>
+                <button onclick="toggleTips()" class="absolute top-2 right-2 text-indigo-400 hover:text-indigo-600 p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Reading Section Card -->
+            <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 flex-1 flex flex-col justify-between">
+                
+                <!-- Card Header (Reading controls & block indicator) -->
+                <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
+                    <div class="flex items-center gap-2">
+                        <span id="para-badge" class="bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1.5 rounded-full tracking-wide">
+                            PARAGRAPH [1]
+                        </span>
+                        <span class="text-xs text-slate-400">• Fred's Blog</span>
+                    </div>
+                    <!-- Audio Speak control -->
+                    <button id="btn-read-aloud" onclick="readAloudParagraph()" class="flex items-center gap-1.5 text-xs font-bold text-teal-600 bg-teal-50 hover:bg-teal-100 border border-teal-100 px-3 py-1.5 rounded-full transition duration-200">
+                        <i class="fa-solid fa-volume-high"></i> <span>聆聽段落</span>
+                    </button>
+                </div>
+
+                <!-- Paragraph Display Content Area -->
+                <div id="paragraph-container" class="fade-in leading-relaxed text-slate-700 tracking-wide text-lg select-text min-h-[160px]">
+                    <!-- Injected dynamically by JavaScript -->
+                </div>
+
+                <!-- Pagination Navigation Controls -->
+                <div class="mt-8 pt-6 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">閱讀進度:</span>
+                        <div class="flex space-x-2 sm:space-x-1" id="dots-indicator">
+                            <!-- Nav dots generated by JS -->
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                        <button id="btn-prev" onclick="navigate(-1)" class="w-[48%] sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 bg-white hover:bg-slate-50 transition disabled:opacity-40 disabled:cursor-not-allowed flex justify-center items-center gap-2">
+                            <i class="fa-solid fa-arrow-left"></i> 上一段
+                        </button>
+                        <button id="btn-next" onclick="navigate(1)" class="w-[48%] sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-sm font-semibold text-white shadow-md shadow-indigo-100 transition flex justify-center items-center gap-2">
+                            下一段 <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Moved Vocab Pills to the reading section for immediate mobile access -->
+                <div class="mt-8 pt-6 border-t border-slate-100">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-key text-indigo-400"></i> 當前段落的關鍵詞彙：
+                    </h3>
+                    <div id="vocab-pill-container" class="flex flex-wrap gap-2">
+                        <!-- Dynamic Vocab pills generated here -->
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-2 block lg:hidden">* 點擊上方單字或文章中藍色粗體字，即可在底部查看翻譯。</p>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- RIGHT SIDE: Sidebar / Floating Dictionary Module (Col: 5) -->
+        <section class="lg:col-span-5 flex flex-col">
+            <!-- Mobile Backdrop overlay -->
+            <div id="mobile-dict-backdrop" class="fixed inset-0 bg-slate-900/40 z-40 hidden lg:hidden backdrop-blur-sm transition-opacity" onclick="closeDictionary()"></div>
+
+            <!-- Dictionary Panel (Sticky Desktop, Bottom Sheet Mobile) -->
+            <div id="dictionary-panel" class="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl lg:rounded-3xl border-t lg:border border-slate-200 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] lg:shadow-sm p-6 lg:p-6 pb-10 lg:pb-6 lg:sticky lg:top-24 transition-transform translate-y-full lg:translate-y-0 duration-300 max-h-[85vh] overflow-y-auto lg:max-h-none lg:overflow-visible">
+                
+                <!-- Mobile Drag Indicator & Close Button -->
+                <div class="flex justify-center mb-4 lg:hidden" onclick="closeDictionary()">
+                    <div class="w-12 h-1.5 bg-slate-300 rounded-full"></div>
+                </div>
+                <button onclick="closeDictionary()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 w-8 h-8 rounded-full flex items-center justify-center lg:hidden transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+
+                <!-- Panel Header -->
+                <div class="flex justify-between items-center pb-4 mb-4 border-b border-slate-100">
+                    <div class="flex items-center space-x-2">
+                        <div class="bg-amber-100 text-amber-700 p-2 rounded-lg">
+                            <i class="fa-solid fa-spell-check text-md"></i>
+                        </div>
+                        <h2 class="font-bold text-slate-800 text-lg">智能單字盒 (Smart Vocab)</h2>
+                    </div>
+                </div>
+
+                <!-- Vocabulary Content Display Area -->
+                <div id="vocab-display" class="min-h-[220px] flex flex-col justify-center">
+                    
+                    <!-- Vocab Details (Hidden by default) -->
+                    <div id="vocab-details" class="hidden flex-col space-y-4 w-full fade-in">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 id="vocab-title" class="text-2xl font-bold text-indigo-700 comic-font tracking-wide"></h3>
+                                <span id="vocab-pos" class="inline-block bg-slate-100 text-slate-500 text-xs font-semibold px-2 py-1 rounded-md mt-1"></span>
+                            </div>
+                            <button onclick="speakCurrentWord()" class="w-10 h-10 rounded-full bg-purple-100 text-purple-600 hover:bg-purple-200 hover:scale-105 transition-all shadow-sm flex items-center justify-center">
+                                <i class="fa-solid fa-volume-high text-lg"></i>
+                            </button>
+                        </div>
+
+                        <div class="space-y-3 pt-2">
+                            <div>
+                                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">中文解釋</h4>
+                                <p id="vocab-zh" class="text-slate-800 font-bold text-lg"></p>
+                            </div>
+
+                            <div>
+                                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">English Definition</h4>
+                                <p id="vocab-en" class="text-slate-700 text-sm leading-relaxed"></p>
+                            </div>
+
+                            <div class="bg-slate-50 border border-slate-100 p-3.5 rounded-xl">
+                                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">例句 (Example Sentence)</h4>
+                                <p id="vocab-example" class="text-slate-600 text-sm italic font-medium"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Idle / Default State -->
+                    <div id="vocab-placeholder" class="text-center py-10 space-y-3">
+                        <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
+                            <i class="fa-solid fa-hand-pointer text-2xl"></i>
+                        </div>
+                        <h3 class="font-bold text-slate-800">未選取單字</h3>
+                        <p class="text-xs text-slate-400 max-w-xs mx-auto px-4">
+                            當你閱讀時，點擊文章中的任何<b class="text-indigo-600">粗體帶底線</b>單字，它的完整解說與例句就會在此處展示。
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER SECTION -->
+    <footer class="bg-white border-t border-slate-200 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center text-slate-400 text-xs space-y-1">
+            <p>Lingnan Secondary School Pre-S2 English Course (Lesson 1) - Fred's Blog</p>
+            <p class="font-medium">Made for junior secondary English reading enhancement &copy; 2026. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- -->
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // Article Database separated into Paragraphs with structured Interactive Word tags
+        const paragraphs = [
+            {
+                index: 1,
+                id: "para-1",
+                text: `I see my <span class="vocab-word" data-word="cousins">cousins</span> almost every day. We live in an <span class="vocab-word" data-word="ordinary">ordinary</span> <span class="vocab-word" data-word="block">block</span> with a small shop on the ground floor. We live on the same floor. Our doors face the <span class="vocab-word" data-word="lifts">lifts</span>, so we meet as soon as I get home. My friends say I am lucky. Sometimes I <span class="vocab-word" data-word="agree">agree</span>. Sometimes I am not sure if <strong>they</strong> are right...`,
+                rawText: "I see my cousins almost every day. We live in an ordinary block with a small shop on the ground floor. We live on the same floor. Our doors face the lifts, so we meet as soon as I get home. My friends say I am lucky. Sometimes I agree. Sometimes I am not sure if they are right...",
+                words: ["cousins", "ordinary", "block", "lifts", "agree"]
+            },
+            {
+                index: 2,
+                id: "para-2",
+                text: `My <span class="vocab-word" data-word="cousins">cousins</span> are Alice and Emma. They are seven now. Yes, that's right, they are <span class="vocab-word" data-word="twins">twins</span>! They are five years <span class="vocab-word" data-word="younger">younger</span> than me and they will turn eight next month.`,
+                rawText: "My cousins are Alice and Emma. They are seven now. Yes, that's right, they are twins! They are five years younger than me and they will turn eight next month.",
+                words: ["cousins", "twins", "younger"]
+            },
+            {
+                index: 3,
+                id: "para-3",
+                text: `Alice and Emma both wear glasses. Alice has long straight hair and a <span class="vocab-word" data-word="fringe">fringe</span>. She <span class="vocab-word" data-word="usually">usually</span> ties her hair in a <span class="vocab-word" data-word="ponytail">ponytail</span>. Emma has short <span class="vocab-word" data-word="curly">curly</span> hair. My aunt, Jane, is a nurse and loves drawing oil paintings. My uncle, Johnson, is an <span class="vocab-word" data-word="engineer">engineer</span>. I sometimes play board games with him at weekends when my parents are not at home.`,
+                rawText: "Alice and Emma both wear glasses. Alice has long straight hair and a fringe. She usually ties her hair in a ponytail. Emma has short curly hair. My aunt, Jane, is a nurse and loves drawing oil paintings. My uncle, Johnson, is an engineer. I sometimes play board games with him at weekends when my parents are not at home.",
+                words: ["fringe", "usually", "ponytail", "curly", "engineer"]
+            },
+            {
+                index: 4,
+                id: "para-4",
+                text: `Alice is <span class="vocab-word" data-word="talkative">talkative</span>. She is <span class="vocab-word" data-word="seldom">seldom</span> quiet! Her <span class="vocab-word" data-word="hobbies">hobbies</span> are dancing and singing. I often hear her voice through the wall in the evening. Sometimes I cannot hear my own music because she sings very loudly. She loves singing. It sometimes <span class="vocab-word" data-word="fills">fills</span> the whole flat.`,
+                rawText: "Alice is talkative. She is seldom quiet! Her hobbies are dancing and singing. I often hear her voice through the wall in the evening. Sometimes I cannot hear my own music because she sings very loudly. She loves singing. It sometimes fills the whole flat.",
+                words: ["talkative", "seldom", "hobbies", "fills"]
+            },
+            {
+                index: 5,
+                id: "para-5",
+                text: `Emma is usually quiet but she can be quite <span class="vocab-word" data-word="bossy">bossy</span>. She enjoys watching videos and playing games on MY phone. Every afternoon she <span class="vocab-word" data-word="knocks">knocks</span> on our door. 'Hello, Fred!' she says and goes straight to my bag, finds my phone, and starts a game. 'You are so <span class="vocab-word" data-word="generous">generous</span> with your phone,' she says. <span class="vocab-word" data-word="honestly">Honestly</span>, I think she should ask me before taking my phone.`,
+                rawText: "Emma is usually quiet but she can be quite bossy. She enjoys watching videos and playing games on MY phone. Every afternoon she knocks on our door. 'Hello, Fred!' she says and goes straight to my bag, finds my phone, and starts a game. 'You are so generous with your phone,' she says. Honestly, I think she should ask me before taking my phone.",
+                words: ["bossy", "knocks", "generous", "honestly"]
+            },
+            {
+                index: 6,
+                id: "para-6",
+                text: `Sometimes my aunt, my uncle, and the twins go on <span class="vocab-word" data-word="holiday">holiday</span>. For a while, it feels like a holiday for me too! I can have some <span class="vocab-word" data-word="peace and quiet">peace and quiet</span>, and I can play on my phone after school. But after a few days, I start to miss them and I want them to come home <span class="vocab-word" data-word="immediately">immediately</span>! So, yes, maybe my friends are right. I am lucky to live next door to my cousins!`,
+                rawText: "Sometimes my aunt, my uncle, and the twins go on holiday. For a while, it feels like a holiday for me too! I can have some peace and quiet, and I can play on my phone after school. But after a few days, I start to miss them and I want them to come home immediately! So, yes, maybe my friends are right. I am lucky to live next door to my cousins!",
+                words: ["holiday", "peace and quiet", "immediately"]
+            }
+        ];
+
+        // Vocabulary Database with parts of speech, translations, English definitions and context-based examples
+        const vocabulary = {
+            cousins: {
+                title: "cousins",
+                pos: "noun (plural)",
+                zh: "堂/表兄弟姊妹",
+                en: "The children of your aunt or uncle.",
+                example: "I am going to play basketball with my cousins next Sunday."
+            },
+            ordinary: {
+                title: "ordinary",
+                pos: "adjective",
+                zh: "尋常的、普通的、平凡的",
+                en: "Normal or average; not special, different, or unusual in any way.",
+                example: "It was just an ordinary school day, nothing exciting happened."
+            },
+            block: {
+                title: "block",
+                pos: "noun",
+                zh: "住宅大廈、大樓",
+                en: "A tall residential building containing many flats or apartments.",
+                example: "There are fifty families living in our apartment block."
+            },
+            lifts: {
+                title: "lifts",
+                pos: "noun (plural)",
+                zh: "升降機、電梯",
+                en: "Elevators designed to carry people or goods up and down between floors.",
+                example: "The lifts in our school are only for teachers and injured students."
+            },
+            agree: {
+                title: "agree",
+                pos: "verb",
+                zh: "同意、贊同",
+                en: "To share the same opinion or feel the same way as someone else.",
+                example: "I agree with you that the English quiz was quite difficult."
+            },
+            twins: {
+                title: "twins",
+                pos: "noun (plural)",
+                zh: "雙胞胎、孿生兒",
+                en: "Two children born to the same mother at the exact same time.",
+                example: "The twins look so much alike that even their parents confuse them sometimes."
+            },
+            younger: {
+                title: "younger",
+                pos: "adjective (comparative)",
+                zh: "較年輕的、年紀較小的",
+                en: "Of a less advanced age than someone else.",
+                example: "My younger sister is in primary primary school, while I am in secondary school."
+            },
+            fringe: {
+                title: "fringe",
+                pos: "noun",
+                zh: "劉海 (額前短髮)",
+                en: "Short hair cut straight across the forehead.",
+                example: "She has to trim her fringe every month because it grows into her eyes."
+            },
+            usually: {
+                title: "usually",
+                pos: "adverb",
+                zh: "通常、經常",
+                en: "Under normal circumstances; in the way that most often happens.",
+                example: "I usually do my homework immediately after getting home."
+            },
+            ponytail: {
+                title: "ponytail",
+                pos: "noun",
+                zh: "馬尾辮",
+                en: "A hairstyle in which hair is pulled back and tied at the back of the head.",
+                example: "She tied her hair into a neat ponytail for the PE class."
+            },
+            curly: {
+                title: "curly",
+                pos: "adjective",
+                zh: "捲曲的",
+                en: "Having curves, curls, or spirals; not straight.",
+                example: "Her hair is naturally curly, so she doesn't need to perm it."
+            },
+            engineer: {
+                title: "engineer",
+                pos: "noun",
+                zh: "工程師",
+                en: "A professional who designs, builds, or maintains engines, machines, or public structures.",
+                example: "His uncle works as a civil engineer building bridges and roads."
+            },
+            talkative: {
+                title: "talkative",
+                pos: "adjective",
+                zh: "健談的、話多的",
+                en: "Fond of talking; speaking a lot.",
+                example: "Our class monitor is very talkative, so he is good at giving presentations."
+            },
+            seldom: {
+                title: "seldom",
+                pos: "adverb",
+                zh: "很少、罕有、極少",
+                en: "Not common; rarely happening; almost never.",
+                example: "We seldom eat fast food because my mother prefers cooking healthy meals."
+            },
+            hobbies: {
+                title: "hobbies",
+                pos: "noun (plural)",
+                zh: "業餘愛好、興趣特長",
+                en: "Activities done regularly in one's leisure time for pleasure and relaxation.",
+                example: "My father's hobbies include reading novels and hiking."
+            },
+            fills: {
+                title: "fills",
+                pos: "verb (singular present)",
+                zh: "充滿、填滿",
+                en: "To make something full; to spread through all parts of a space.",
+                example: "The delicious smell of fresh cookies fills the entire bakery."
+            },
+            bossy: {
+                title: "bossy",
+                pos: "adjective",
+                zh: "愛指揮別人的、專橫霸道的",
+                en: "Always telling other people what to do in an annoying or commanding way.",
+                example: "No one likes to work with him because he is always so bossy during group projects."
+            },
+            knocks: {
+                title: "knocks",
+                pos: "verb (singular present)",
+                zh: "敲擊 (通常指敲門)",
+                en: "Hits a hard surface (like a door) with knuckles to gain attention.",
+                example: "He always knocks loudly three times before opening my bedroom door."
+            },
+            generous: {
+                title: "generous",
+                pos: "adjective",
+                zh: "大方的、寬容慷慨的",
+                en: "Willing to give money, help, kindness, or share resources freely.",
+                example: "Thank you for being so generous and sharing your lunch with me."
+            },
+            honestly: {
+                title: "honestly",
+                pos: "adverb",
+                zh: "老實說、誠實地",
+                en: "In a truthful, fair, and sincere way (used to state a strong real opinion).",
+                example: "Honestly, I think we should cancel the picnic since it is raining heavily."
+            },
+            holiday: {
+                title: "holiday",
+                pos: "noun",
+                zh: "假期、節日",
+                en: "A day or period of time when you do not go to school or work.",
+                example: "We went to Japan for our summer holiday last year."
+            },
+            "peace and quiet": {
+                title: "peace and quiet",
+                pos: "phrase / idiom",
+                zh: "安寧、寧靜的生活",
+                en: "A state of calmness, quietness, and freedom from stress or disturbance.",
+                example: "After a noisy day at school, I just want some peace and quiet in my bedroom."
+            },
+            immediately: {
+                title: "immediately",
+                pos: "adverb",
+                zh: "立即、馬不停蹄地、即刻",
+                en: "Right away; instantly; without any delay or waiting.",
+                example: "If you feel sick, please tell your class teacher immediately."
+            }
+        };
+
+        // Application State
+        let currentParagraphIndex = 0;
+        let selectedWordKey = null;
+
+        //        // Initialize App on Window Load
+        window.onload = function() {
+            renderParagraph();
+            setupInteractiveListeners();
+            updateNavigation();
+        };
+
+        // Render Paragraph Page
+        function renderParagraph() {
+            const data = paragraphs[currentParagraphIndex];
+            
+            // 1. Update text content
+            const container = document.getElementById("paragraph-container");
+            container.innerHTML = data.text;
+            
+            // Apply Font Size class
+            applyFontSizeToContainer();
+
+            // 2. Set Paragraph badge index
+            document.getElementById("para-badge").innerHTML = `PARAGRAPH [${data.index}] / 6`;
+            
+            // 3. Render Paragraph Key Vocabulary Pills in Footer of panel
+            const pillContainer = document.getElementById("vocab-pill-container");
+            pillContainer.innerHTML = "";
+            data.words.forEach(wKey => {
+                const wordData = vocabulary[wKey];
+                if (wordData) {
+                    const button = document.createElement("button");
+                    button.className = "text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 px-3.5 py-2 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-lg border border-slate-200 transition duration-150 shadow-sm sm:shadow-none active:scale-95";
+                    button.innerHTML = wordData.title;
+                    button.onclick = () => selectWord(wKey);
+                    pillContainer.appendChild(button);
+                }
+            });
+
+            // 4. Setup Listeners inside text
+            setupInteractiveListeners();
+        }
+
+        // Setup Event Listeners for clickable span elements
+        function setupInteractiveListeners() {
+            const spans = document.querySelectorAll(".vocab-word");
+            spans.forEach(span => {
+                const wordKey = span.getAttribute("data-word");
+                
+                // Highlight active if selected
+                if (wordKey === selectedWordKey) {
+                    span.classList.add("active");
+                } else {
+                    span.classList.remove("active");
+                }
+
+                // Click event
+                span.onclick = (e) => {
+                    e.stopPropagation(); // Avoid bubblings
+                    selectWord(wordKey);
+                };
+            });
+        }
+
+        // Set active Vocabulary in Sidebar Display Box
+        function selectWord(wordKey) {
+            selectedWordKey = wordKey;
+            
+            // Highlight active class in text dynamically
+            const spans = document.querySelectorAll(".vocab-word");
+            spans.forEach(span => {
+                if (span.getAttribute("data-word") === wordKey) {
+                    span.classList.add("active");
+                } else {
+                    span.classList.remove("active");
+                }
+            });
+
+            const detailsBox = document.getElementById("vocab-details");
+            const placeholder = document.getElementById("vocab-placeholder");
+            const data = vocabulary[wordKey];
+
+            if (data && detailsBox && placeholder) {
+                // Populate data
+                document.getElementById("vocab-title").innerText = data.title;
+                document.getElementById("vocab-pos").innerText = data.pos;
+                document.getElementById("vocab-zh").innerText = data.zh;
+                document.getElementById("vocab-en").innerText = data.en;
+                document.getElementById("vocab-example").innerText = `"${data.example}"`;
+
+                // Toggle visibility
+                placeholder.classList.add("hidden");
+                detailsBox.classList.remove("hidden");
+                
+                // Show Mobile Bottom Sheet
+                const dictPanel = document.getElementById("dictionary-panel");
+                const backdrop = document.getElementById("mobile-dict-backdrop");
+                
+                if (window.innerWidth < 1024) {
+                    dictPanel.classList.remove("translate-y-full");
+                    backdrop.classList.remove("hidden");
+                    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+                }
+            } else if (placeholder && detailsBox) {
+                // Show default
+                placeholder.classList.remove("hidden");
+                detailsBox.classList.add("hidden");
+            }
+        }
+
+        // Close Dictionary Modal on Mobile
+        function closeDictionary() {
+            const dictPanel = document.getElementById("dictionary-panel");
+            const backdrop = document.getElementById("mobile-dict-backdrop");
+            
+            if (window.innerWidth < 1024) {
+                dictPanel.classList.add("translate-y-full");
+                backdrop.classList.add("hidden");
+                document.body.style.overflow = ''; // Restore scrolling
+                
+                // Optional: clear active selection so it feels "closed"
+                selectedWordKey = null;
+                const spans = document.querySelectorAll(".vocab-word");
+                spans.forEach(span => span.classList.remove("active"));
+            }
+        }
+
+        // Change between Paragraph Slides
+        function navigate(direction) {
+            const nextIndex = currentParagraphIndex + direction;
+            if (nextIndex >= 0 && nextIndex < paragraphs.length) {
+                currentParagraphIndex = nextIndex;
+                
+                // Reset active selected word on paragraph changes to avoid confusion
+                selectedWordKey = null;
+                const detailsBox = document.getElementById("vocab-details");
+                const placeholder = document.getElementById("vocab-placeholder");
+                
+                if (placeholder && detailsBox) {
+                    placeholder.classList.remove("hidden");
+                    detailsBox.classList.add("hidden");
+                }
+
+                // Render page
+                renderParagraph();
+                updateNavigation();
+
+                // Stop voice synthesis if playing
+                if (window.speechSynthesis) {
+                    window.speechSynthesis.cancel();
+                    document.getElementById("btn-read-aloud").innerHTML = '<i class="fa-solid fa-volume-high"></i> <span>聆聽段落</span>';
+                    isReadingParagraph = false;
+                }
+            }
+        }
+
+        // Update Nav dots and buttons
+        function updateNavigation() {
+            const btnPrev = document.getElementById("btn-prev");
+            const btnNext = document.getElementById("btn-next");
+            
+            // Enable/Disable buttons safely
+            btnPrev.disabled = currentParagraphIndex === 0;
+            if (currentParagraphIndex === paragraphs.length - 1) {
+                btnNext.innerHTML = '完成閱讀 <i class="fa-solid fa-circle-check"></i>';
+                btnNext.classList.remove("bg-indigo-600");
+                btnNext.classList.add("bg-emerald-600", "hover:bg-emerald-700");
+            } else {
+                btnNext.innerHTML = '下一段 <i class="fa-solid fa-arrow-right"></i>';
+                btnNext.classList.remove("bg-emerald-600");
+                btnNext.classList.add("bg-indigo-600", "hover:bg-indigo-700");
+            }
+
+            // Generate indicator dots
+            const dotsContainer = document.getElementById("dots-indicator");
+            dotsContainer.innerHTML = "";
+            paragraphs.forEach((p, idx) => {
+                const dot = document.createElement("button");
+                dot.onclick = () => {
+                    currentParagraphIndex = idx;
+                    selectedWordKey = null;
+                    renderParagraph();
+                    updateNavigation();
+                };
+                // Make dots slightly larger for mobile touch
+                if (idx === currentParagraphIndex) {
+                    dot.className = "w-6 sm:w-6 h-3 sm:h-2.5 rounded-full bg-indigo-600 transition-all duration-300";
+                } else {
+                    dot.className = "w-3 sm:w-2.5 h-3 sm:h-2.5 rounded-full bg-slate-200 hover:bg-slate-300 transition-all duration-300";
+                }
+                dotsContainer.appendChild(dot);
+            });
+        }
+
+        // Text Size modifier
+        let activeFontSize = "medium";
+        function changeFontSize(size) {
+            activeFontSize = size;
+            
+            // Adjust buttons active styling
+            const sBtn = document.getElementById("btn-fs-s");
+            const mBtn = document.getElementById("btn-fs-m");
+            const lBtn = document.getElementById("btn-fs-l");
+
+            [sBtn, mBtn, lBtn].forEach(btn => btn.className = "px-2.5 py-1 text-slate-600 hover:text-slate-900 rounded-md transition");
+            
+            if (size === 'small') {
+                sBtn.className = "px-2.5 py-1 text-xs font-semibold rounded-md bg-white shadow-xs text-indigo-600 transition";
+            } else if (size === 'medium') {
+                mBtn.className = "px-3 py-1 text-sm font-semibold rounded-md bg-white shadow-xs text-indigo-600 transition";
+            } else {
+                lBtn.className = "px-2.5 py-1 text-lg font-bold rounded-md bg-white shadow-xs text-indigo-600 transition";
+            }
+
+            applyFontSizeToContainer();
+        }
+
+        function applyFontSizeToContainer() {
+            const container = document.getElementById("paragraph-container");
+            container.className = "fade-in leading-relaxed text-slate-700 tracking-wide select-text min-h-[160px]";
+            
+            if (activeFontSize === "small") {
+                container.classList.add("text-base");
+            } else if (activeFontSize === "medium") {
+                container.classList.add("text-lg", "md:text-xl");
+            } else {
+                container.classList.add("text-2xl", "md:text-3xl", "leading-loose");
+            }
+        }
+
+        // Toggle Helpful Tips Panel
+        function toggleTips() {
+            const tips = document.getElementById("tips-banner");
+            tips.classList.toggle("hidden");
+        }
+
+        //        // Text Speech (Audio Speak) Feature
+        let isReadingParagraph = false;
+        function readAloudParagraph() {
+            if (!('speechSynthesis' in window)) {
+                alert("抱歉！您的瀏覽器不支援語音朗讀系統。");
+                return;
+            }
+
+            if (isReadingParagraph) {
+                window.speechSynthesis.cancel();
+                document.getElementById("btn-read-aloud").innerHTML = '<i class="fa-solid fa-volume-high"></i> <span>聆聽段落</span>';
+                isReadingParagraph = false;
+                return;
+            }
+
+            const rawText = paragraphs[currentParagraphIndex].rawText;
+            const utterance = new SpeechSynthesisUtterance(rawText);
+            
+            // Find English voice natively
+            const voices = window.speechSynthesis.getVoices();
+            const englishVoice = voices.find(voice => voice.lang.startsWith('en-'));
+            if (englishVoice) {
+                utterance.voice = englishVoice;
+            }
+            utterance.rate = 0.85; // Slightly slower, highly suitable for S1 students
+
+            utterance.onend = function() {
+                document.getElementById("btn-read-aloud").innerHTML = '<i class="fa-solid fa-volume-high"></i> <span>聆聽段落</span>';
+                isReadingParagraph = false;
+            };
+
+            document.getElementById("btn-read-aloud").innerHTML = '<i class="fa-solid fa-circle-stop text-red-500 animate-pulse"></i> <span class="text-red-600">停止播放</span>';
+            isReadingParagraph = true;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Speak specific sidebar word
+        function speakCurrentWord() {
+            if (!selectedWordKey || !('speechSynthesis' in window)) return;
+            
+            window.speechSynthesis.cancel(); // cancel current speak
+            const wordToSpeak = vocabulary[selectedWordKey].title;
+            const utterance = new SpeechSynthesisUtterance(wordToSpeak);
+            
+            const voices = window.speechSynthesis.getVoices();
+            const englishVoice = voices.find(voice => voice.lang.startsWith('en-'));
+            if (englishVoice) {
+                utterance.voice = englishVoice;
+            }
+            utterance.rate = 0.8; // clear speed
+            window.speechSynthesis.speak(utterance);
+        }
+    </script>
+</body>
+</html>
