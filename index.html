@@ -1,1050 +1,384 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>English Review Adventure</title>
-    <!-- Tailwind CSS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Past Perfect Tense Adventure</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts (Comic Neue for Game Feel) -->
-    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
-    
     <style>
+        /* Custom styles for animations and specific game elements */
         body {
-            font-family: 'Nunito', sans-serif;
-            background-color: #f0fdf4; /* Light green background */
-            touch-action: manipulation; /* Prevent double-tap zoom on mobile */
-            overflow-x: hidden;
-            -webkit-user-select: none; /* Prevent text selection highlights on tap */
-            user-select: none;
+            font-family: 'Inter', sans-serif;
+            background-color: #f0fdfa; /* Light teal background */
         }
-        .comic-font { font-family: 'Comic Neue', cursive; }
-        
-        /* Game Screen transitions */
-        .screen {
-            display: none;
-            animation: fadeIn 0.4s ease-in-out;
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
         }
-        .screen.active {
-            display: flex;
-        }
-        
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
-        @keyframes pop {
+        .correct-animation {
+            animation: pulse-green 0.5s ease-in-out;
+            background-color: #dcfce7 !important; /* tailwind green-100 */
+            border-color: #22c55e !important; /* tailwind green-500 */
+        }
+        @keyframes pulse-green {
             0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
+            50% { transform: scale(1.05); }
             100% { transform: scale(1); }
         }
-        .animate-pop { animation: pop 0.3s ease-in-out; }
-
-        /* Match Game Styles */
-        .match-card {
-            transition: all 0.2s;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
+        .incorrect-animation {
+            animation: shake-red 0.5s ease-in-out;
+            background-color: #fee2e2 !important; /* tailwind red-100 */
+            border-color: #ef4444 !important; /* tailwind red-500 */
         }
-        .match-card.selected {
-            border-color: #3b82f6; /* Blue */
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
-            transform: scale(1.05);
+        @keyframes shake-red {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
         }
-        .match-card.matched {
-            background-color: #d1fae5; /* Green */
-            border-color: #10b981;
-            color: #047857;
-            pointer-events: none;
-            opacity: 0.7;
-        }
-
-        /* Drag and Drop Game Styles */
-        .draggable {
-            touch-action: none; /* Crucial for custom mobile drag */
-            user-select: none;
-            z-index: 10;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .draggable.tapped-selected {
-            border-color: #eab308;
-            box-shadow: 0 0 0 4px rgba(234, 179, 8, 0.4);
-            transform: scale(1.08);
-            background-color: #fef9c3;
-        }
-        .dropzone.active-zone {
-            background-color: #fef08a; /* Yellow highlight when hovering */
-            border-color: #eab308;
-            transform: scale(1.03);
-        }
+        .hidden { display: none; }
     </style>
 </head>
-<body class="min-h-screen text-slate-800 flex flex-col">
+<body class="text-gray-800">
 
-    <!-- Background Music Audio Element -->
-    <audio id="bgm-audio" loop preload="auto">
-        <source src="https://assets.codepen.io/17688442/Moavii+-+Tides+%26+Smiles+%28freetouse.com%29.mp3" type="audio/mpeg">
-    </audio>
-
-    <header class="bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-50">
-        <h1 class="text-xl font-bold text-emerald-600 comic-font">
-            <i class="fa-solid fa-gamepad"></i> Review Adventure
-        </h1>
-        <div class="flex items-center gap-3">
-            <button id="btn-home" onclick="goHome()" class="hidden bg-amber-100 text-amber-700 px-4 py-2 rounded-full font-bold text-sm shadow-sm hover:bg-amber-200 transition flex items-center gap-2">
-                <i class="fa-solid fa-arrow-left"></i> 回主頁
-            </button>
-            <button id="btn-bgm" onclick="toggleBGM()" class="bg-slate-100 text-slate-600 w-10 h-10 rounded-full font-bold shadow-sm hover:bg-slate-200 transition flex items-center justify-center text-lg">
-                <i id="btn-bgm-icon" class="fa-solid fa-volume-high"></i>
-            </button>
-        </div>
-    </header>
-
-    <main class="flex-1 max-w-lg mx-auto w-full relative flex flex-col">
+    <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         
-        <!-- ================= START SCREEN ================= -->
-        <div id="screen-start" class="screen active flex-col p-6 flex-1 items-center justify-center min-h-[70vh]">
-            <div class="bg-white p-8 rounded-3xl shadow-sm border-2 border-slate-100 text-center w-full max-w-sm animate-pop">
-                <div class="text-5xl mb-4"><i class="fa-solid fa-graduation-cap text-emerald-500"></i></div>
-                <h2 class="text-4xl font-bold text-slate-800 comic-font mb-4">Lesson 1 Review!</h2>
-                <p class="text-slate-500 font-medium mb-8">準備好複習了嗎？</p>
-                
-                <button onclick="startApp()" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-4 px-8 rounded-2xl shadow-[0_6px_0_#3730a3] active:shadow-[0_0px_0_#3730a3] active:translate-y-[6px] transition-all text-xl flex items-center justify-center gap-3">
-                    <i class="fa-solid fa-play"></i> Start!
-                </button>
-            </div>
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-extrabold text-teal-600 mb-2 drop-shadow-sm">Mastering the Past Perfect Tense</h1>
+            <p class="text-lg text-gray-600">Let's learn how to talk about "the past of the past"!</p>
+        </header>
+
+        <!-- Navigation Buttons -->
+        <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-8">
+            <button id="btn-part1" class="px-6 py-3 bg-teal-500 text-white font-bold rounded-full shadow-md hover:bg-teal-600 transition duration-300 transform hover:-translate-y-1">Part 1: Timeline Detective</button>
+            <button id="btn-part2" class="px-6 py-3 bg-indigo-500 text-white font-bold rounded-full shadow-md hover:bg-indigo-600 transition duration-300 transform hover:-translate-y-1 opacity-50 cursor-not-allowed" disabled title="Complete Part 1 first!">Part 2: Comic Fill-in</button>
         </div>
 
-        <!-- ================= MAIN MENU ================= -->
-        <div id="screen-home" class="screen flex-col p-6 space-y-6">
-            <div class="text-center mb-4">
-                <h2 class="text-3xl font-bold text-slate-700 comic-font mb-2">Choose a Mission!</h2>
-                <p class="text-slate-500 font-medium text-sm">溫習今天所學的知識，選擇一個任務開始吧！</p>
+        <!-- PART 1 CONTAINER -->
+        <section id="part1-container" class="bg-white rounded-2xl shadow-xl p-6 sm:p-8 border-t-4 border-teal-500 fade-in">
+            <h2 class="text-2xl font-bold text-teal-700 mb-4 border-b-2 border-teal-100 pb-2">Part 1: Timeline Detective</h2>
+            <p class="mb-6 text-gray-700">Look at the sentence and the picture. Which action happened <strong>FIRST</strong>? Click on the correct part of the sentence.</p>
+
+            <div id="q-container" class="relative">
+                <!-- Question content will be injected here by JS -->
+            </div>
+
+            <!-- Feedback Area for Part 1 -->
+            <div id="feedback-part1" class="mt-6 p-4 rounded-lg hidden text-center text-lg font-medium"></div>
+
+            <div class="mt-6 text-center">
+                <button id="next-q-btn" class="hidden px-6 py-2 bg-blue-500 text-white font-bold rounded-lg shadow hover:bg-blue-600 transition">Next Question</button>
             </div>
             
-            <div class="grid grid-cols-1 gap-4">
-                <button onclick="startGame(1)" class="bg-blue-500 hover:bg-blue-600 text-white p-5 rounded-2xl shadow-[0_6px_0_#1d4ed8] active:shadow-[0_0px_0_#1d4ed8] active:translate-y-[6px] transition-all flex items-center gap-4 text-left">
-                    <div class="bg-white/20 p-3 rounded-xl text-2xl"><i class="fa-solid fa-chalkboard-user"></i></div>
-                    <div>
-                        <h3 class="text-lg font-bold comic-font">1. You are the Teacher</h3>
-                        <p class="text-blue-100 text-xs">Question words (Who, What...)</p>
-                    </div>
-                </button>
+            <!-- Progress indicator -->
+            <div class="mt-4 text-center text-sm text-gray-500 font-semibold" id="part1-progress">Question 1 of 3</div>
+        </section>
 
-                <button onclick="startGame(2)" class="bg-purple-500 hover:bg-purple-600 text-white p-5 rounded-2xl shadow-[0_6px_0_#6d28d9] active:shadow-[0_0px_0_#6d28d9] active:translate-y-[6px] transition-all flex items-center gap-4 text-left">
-                    <div class="bg-white/20 p-3 rounded-xl text-2xl"><i class="fa-solid fa-user-doctor"></i></div>
-                    <div>
-                        <h3 class="text-lg font-bold comic-font">2. Job Match</h3>
-                        <p class="text-purple-100 text-xs">Match the jobs with pictures</p>
-                    </div>
-                </button>
-
-                <button onclick="startGame(3)" class="bg-orange-500 hover:bg-orange-600 text-white p-5 rounded-2xl shadow-[0_6px_0_#c2410c] active:shadow-[0_0px_0_#c2410c] active:translate-y-[6px] transition-all flex items-center gap-4 text-left">
-                    <div class="bg-white/20 p-3 rounded-xl text-2xl"><i class="fa-solid fa-palette"></i></div>
-                    <div>
-                        <h3 class="text-lg font-bold comic-font">3. Activity Drag & Drop</h3>
-                        <p class="text-orange-100 text-xs">What is she doing?</p>
-                    </div>
-                </button>
-
-                <button onclick="startGame(4)" class="bg-rose-500 hover:bg-rose-600 text-white p-5 rounded-2xl shadow-[0_6px_0_#be123c] active:shadow-[0_0px_0_#be123c] active:translate-y-[6px] transition-all flex items-center gap-4 text-left">
-                    <div class="bg-white/20 p-3 rounded-xl text-2xl"><i class="fa-solid fa-pen-clip"></i></div>
-                    <div>
-                        <h3 class="text-lg font-bold comic-font">4. Listen & Write</h3>
-                        <p class="text-rose-100 text-xs">Dictation using your keyboard</p>
-                    </div>
-                </button>
-            </div>
-        </div>
-
-        <!-- ================= GAME 1: QUESTION WORDS ================= -->
-        <div id="screen-game-1" class="screen flex-col p-4 h-full min-h-[80vh]">
-            <div class="text-center mb-3">
-                <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">Part 1</span>
-                <h2 class="text-xl font-bold text-slate-800 comic-font mt-1">You are the Teacher!</h2>
-                <p class="text-slate-500 text-xs mt-0.5">Look at the student's answer and pick the correct question word.</p>
+        <!-- PART 2 CONTAINER (Initially Hidden) -->
+        <section id="part2-container" class="hidden bg-white rounded-2xl shadow-xl p-6 sm:p-8 border-t-4 border-indigo-500 fade-in">
+            <h2 class="text-2xl font-bold text-indigo-700 mb-4 border-b-2 border-indigo-100 pb-2">Part 2: Leo's Skateboarding Journey</h2>
+            <p class="mb-4 text-gray-700">Read the comic story below. Fill in the blanks using the <strong>Past Perfect Tense (had + past participle)</strong> of the verbs in brackets.</p>
+            
+            <div class="mb-6 rounded-xl overflow-hidden shadow-md border border-gray-200">
+                <img src="https://assets.codepen.io/17688442/skateboard.png" alt="Leo's Skateboarding Comic" class="w-full h-auto object-cover">
             </div>
 
-            <!-- Quiz Container -->
-            <div class="flex-1 flex flex-col items-center justify-center w-full max-w-sm mx-auto">
-                <div class="w-full flex justify-between text-xs font-bold text-slate-400 mb-1 px-1">
-                    <span id="g1-progress">Question 1 / 5</span>
-                </div>
-                
-                <!-- Student Answer Bubble -->
-                <div class="bg-white border-2 border-slate-200 rounded-2xl p-4 w-full relative mb-6 shadow-xs">
-                    <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-yellow-100 text-yellow-800 text-xs px-3 py-0.5 rounded-full border border-yellow-300 font-bold">
-                        Student's Answer
-                    </div>
-                    <p id="g1-answer-text" class="text-base font-bold text-center text-slate-700 italic">"Alice and Emma are my cousins."</p>
-                    <div class="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-5 h-5 bg-white border-b-2 border-r-2 border-slate-200 transform rotate-45"></div>
-                </div>
-
-                <!-- Teacher Question Area -->
-                <div class="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 w-full shadow-inner flex flex-col items-center">
-                    <h3 class="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
-                        <i class="fa-solid fa-chalkboard-user"></i> Your Question:
-                    </h3>
-                    <div class="flex flex-wrap justify-center gap-2 w-full" id="g1-options">
-                        <!-- Options generated by JS -->
-                    </div>
-                    
-                    <!-- Blank Question Area -->
-                    <div id="g1-blank-question" class="text-base font-bold text-slate-700 mt-4 text-center bg-white px-3 py-2 rounded-xl border border-blue-100 shadow-xs w-full"></div>
-                </div>
-
-                <div id="g1-feedback" class="mt-4 text-lg font-bold h-6 text-center w-full"></div>
-                
-                <button id="g1-next-btn" onclick="nextQuestionG1()" class="hidden mt-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-8 rounded-xl shadow-[0_4px_0_#059669] active:shadow-[0_0px_0_#059669] active:translate-y-[4px] transition-all w-full">
-                    Next Question <i class="fa-solid fa-arrow-right"></i>
-                </button>
+            <div id="comic-questions" class="space-y-4">
+                <!-- Questions injected by JS -->
             </div>
 
-            <!-- Back to Home Button (Bottom) -->
-            <div class="mt-6 text-center pb-2 w-full flex-shrink-0">
-                <button onclick="goHome()" class="bg-white border-2 border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 font-bold py-3 px-6 rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 mx-auto w-full max-w-xs">
-                    <i class="fa-solid fa-arrow-left"></i> 回主頁 (Back to Home)
-                </button>
-            </div>
-        </div>
-
-        <!-- ================= GAME 2: JOB MATCH ================= -->
-        <div id="screen-game-2" class="screen flex-col p-4 h-full min-h-[80vh]">
-            <div class="text-center mb-3">
-                <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">Part 2</span>
-                <h2 class="text-xl font-bold text-slate-800 comic-font mt-1">Job Match</h2>
-                <p class="text-slate-500 text-xs mt-0.5">Tap a word, then tap the matching picture.</p>
-            </div>
-
-            <div class="flex-1 grid grid-cols-2 gap-x-4 gap-y-2 max-h-[50vh] overflow-y-auto" id="g2-board">
-                <!-- Column 1: Words -->
-                <div class="flex flex-col gap-2" id="g2-words-col"></div>
-                <!-- Column 2: Pictures -->
-                <div class="flex flex-col gap-2" id="g2-pics-col"></div>
+            <div class="mt-8 text-center">
+                <button id="check-all-btn" class="px-8 py-3 bg-indigo-500 text-white font-bold rounded-full shadow-lg hover:bg-indigo-600 transition transform hover:-translate-y-1 text-lg">Check All Answers</button>
             </div>
             
-            <div id="g2-win-msg" class="hidden text-center mt-4 animate-pop">
-                <div class="text-3xl mb-1">🎉</div>
-                <h3 class="text-xl font-bold text-emerald-600 comic-font">All Matched!</h3>
+            <div id="final-message" class="hidden mt-6 p-6 bg-yellow-100 border-2 border-yellow-400 rounded-xl text-center">
+                <h3 class="text-2xl font-bold text-yellow-700 mb-2">🎉 Congratulations! 🎉</h3>
+                <p class="text-lg text-gray-700">You have successfully mastered the basics of the Past Perfect Tense!</p>
             </div>
+        </section>
 
-            <!-- Back to Home Button (Bottom) -->
-            <div class="mt-6 text-center pb-2 w-full flex-shrink-0">
-                <button onclick="goHome()" class="bg-white border-2 border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 font-bold py-3 px-6 rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 mx-auto w-full max-w-xs">
-                    <i class="fa-solid fa-arrow-left"></i> 回主頁 (Back to Home)
-                </button>
-            </div>
-        </div>
-
-        <!-- ================= GAME 3: ACTIVITY DRAG & DROP ================= -->
-        <div id="screen-game-3" class="screen flex-col p-4 h-full min-h-[85vh]">
-            <div class="text-center mb-4">
-                <span class="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">Part 3</span>
-                <h2 class="text-xl font-bold text-slate-800 comic-font mt-1">Listen & Match</h2>
-                <p class="text-slate-500 text-xs mt-0.5">Listen to the teacher and drag OR tap to match the correct emoji!</p>
-            </div>
-
-            <div class="relative flex-1 flex flex-col justify-between items-center w-full pb-6">
-                
-                <!-- Target Area (Middle Girl) -->
-                <div class="flex-1 flex items-center justify-center w-full z-0 my-2">
-                    <div id="g3-dropzone" class="dropzone w-56 h-56 sm:w-64 sm:h-64 rounded-2xl border-4 border-dashed border-slate-300 bg-white flex flex-col items-center justify-center shadow-inner transition-all duration-300 relative overflow-hidden">
-                        
-                        <!-- Teacher/Girl View -->
-                        <div id="g3-teacher-view" class="w-full h-full flex flex-col items-center justify-center absolute inset-0 z-10 transition-opacity">
-                            <!-- Display the specified girl image fully in background -->
-                            <img src="https://assets.codepen.io/17688442/Gemini_Generated_Image_kkdw3kkkdw3kkkdw.png" alt="Girl" class="w-full h-full object-cover absolute inset-0 -z-10">
-                            
-                            <!-- Listening Audio play button overlay -->
-                            <button onclick="playG3Audio()" class="bg-blue-500 hover:bg-blue-600 text-white rounded-full w-14 h-14 shadow-[0_4px_0_#1d4ed8] active:shadow-[0_0px_0_#1d4ed8] active:translate-y-[4px] flex items-center justify-center text-2xl transition-all z-20">
-                                <i class="fa-solid fa-volume-high"></i>
-                            </button>
-                        </div>
-
-                        <!-- Success Image View (Displays full screen matching photo upon success) -->
-                        <img id="g3-target-image" src="" alt="Activity" class="hidden w-full h-full object-cover absolute inset-0 z-20 bg-white">
-                        
-                        <div class="absolute bottom-2 bg-white/90 px-3 py-1 rounded-full shadow-xs z-30 pointer-events-none">
-                            <span id="g3-target-text" class="text-slate-600 font-bold text-xs">Drop or tap here!</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Draggable Items (Bottom Area) -->
-                <div class="w-full bg-orange-50 p-3 rounded-2xl border-2 border-orange-100 z-40 relative h-36">
-                    <h4 class="text-center text-[10px] font-bold text-orange-800 uppercase tracking-wide mb-2">Emojis (Tap & Target or Drag)</h4>
-                    <div id="g3-items-container" class="flex justify-around items-center h-20 w-full relative">
-                        <!-- Items generated by JS -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Back to Home Button (Bottom) -->
-            <div class="mt-4 text-center pb-2 w-full flex-shrink-0">
-                <button onclick="goHome()" class="bg-white border-2 border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 font-bold py-3 px-6 rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 mx-auto w-full max-w-xs">
-                    <i class="fa-solid fa-arrow-left"></i> 回主頁 (Back to Home)
-                </button>
-            </div>
-        </div>
-
-        <!-- ================= GAME 4: DICTATION ================= -->
-        <div id="screen-game-4" class="screen flex-col p-4 h-full min-h-[85vh]">
-            <div class="text-center mb-3">
-                <span class="bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">Part 4</span>
-                <h2 class="text-xl font-bold text-slate-800 comic-font mt-1">Listen & Type</h2>
-                <p class="text-slate-500 text-xs mt-0.5">Listen carefully and type the correct word.</p>
-            </div>
-
-            <div class="w-full flex justify-between items-center mb-4">
-                <span id="g4-progress" class="text-xs font-bold text-slate-500">Word 1 of 3</span>
-                <button onclick="playDictationAudio()" class="bg-rose-500 text-white w-12 h-12 rounded-full shadow-[0_4px_0_#9f1239] active:shadow-[0_0px_0_#9f1239] active:translate-y-[4px] flex items-center justify-center text-xl transition-all">
-                    <i class="fa-solid fa-volume-high"></i>
-                </button>
-            </div>
-
-            <!-- Input Area -->
-            <div class="w-full mb-3 relative">
-                <input type="text" id="g4-input" 
-                       class="w-full text-center text-2xl comic-font font-bold p-4 rounded-2xl border-4 border-slate-200 text-slate-700 focus:border-rose-400 focus:outline-none shadow-inner transition-colors disabled:opacity-90" 
-                       placeholder="Type here..." 
-                       autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="none">
-            </div>
-
-            <!-- Feedback Area -->
-            <div id="g4-feedback" class="text-center mb-4 min-h-[4rem] flex flex-col items-center justify-center">
-                <!-- Feedback content will be injected here -->
-            </div>
-
-            <!-- Controls -->
-            <div class="mb-4 w-full">
-                <button id="g4-submit-btn" onclick="submitDictation()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 rounded-xl shadow-[0_4px_0_#1d4ed8] active:shadow-[0_0px_0_#1d4ed8] active:translate-y-[4px] transition-all flex items-center justify-center gap-2 text-base">
-                    <i class="fa-solid fa-paper-plane"></i> 提交答案 (Submit)
-                </button>
-            </div>
-
-            <button id="g4-next-btn" onclick="nextDictationWord()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-[0_4px_0_#059669] active:shadow-[0_0px_0_#059669] active:translate-y-[4px] transition-all hidden text-base">
-                Next Word <i class="fa-solid fa-arrow-right"></i>
-            </button>
-            <button id="g4-finish-btn" onclick="goHome()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 rounded-xl shadow-[0_4px_0_#b45309] active:shadow-[0_0px_0_#b45309] active:translate-y-[4px] transition-all hidden text-base">
-                完成！回主頁 <i class="fa-solid fa-house"></i>
-            </button>
-
-            <!-- Back to Home Button (Bottom) -->
-            <div class="mt-auto pt-6 text-center pb-2 w-full flex-shrink-0">
-                <button onclick="goHome()" class="bg-white border-2 border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 font-bold py-3 px-6 rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 mx-auto w-full max-w-xs">
-                    <i class="fa-solid fa-arrow-left"></i> 回主頁 (Back to Home)
-                </button>
-            </div>
-        </div>
-
-    </main>
+    </div>
 
     <script>
-        // --- Audio Effects & Background Music Setup ---
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const bgmAudio = document.getElementById('bgm-audio');
-        let isBgmPlaying = false;
+        // --- DATA ---
 
-        // Set low comfortable BGM volume
-        if (bgmAudio) {
-            bgmAudio.volume = 0.25;
-        }
-
-        function startBGM() {
-            if(audioCtx.state === 'suspended') audioCtx.resume();
-            if (bgmAudio) {
-                bgmAudio.play().then(() => {
-                    isBgmPlaying = true;
-                    document.getElementById('btn-bgm-icon').className = "fa-solid fa-volume-high";
-                }).catch(e => {
-                    console.log("BGM autoplay delayed until user interaction:", e);
-                });
+        // Part 1 Data
+        const part1Questions = [
+            {
+                image: 'https://assets.codepen.io/17688442/Gemini_Generated_Image_srok0csrok0csrok.png',
+                fullText: "I selected my set in the app. I paid with my credit card in the app.",
+                combinedSentence: "I <span class='text-teal-700 font-extrabold bg-teal-200 px-1 rounded shadow-sm'>had selected</span> my set in the app before I paid with my credit card in the app.",
+                event1: { text: "I selected my set in the app", isFirst: true },
+                event2: { text: "I paid with my credit card in the app", isFirst: false },
+                explanation: "You must <strong>select the meal</strong> BEFORE you <strong>pay</strong>. Therefore, 'selected' happens first. In the past perfect tense, we say 'had selected'."
+            },
+            {
+                image: 'https://assets.codepen.io/17688442/Gemini_Generated_Image_dikn8adikn8adikn.png',
+                fullText: "When we got home last night. Somebody broke into the flat.",
+                combinedSentence: "When we got home last night, we found that somebody <span class='text-teal-700 font-extrabold bg-teal-200 px-1 rounded shadow-sm'>had broken</span> into the flat.",
+                event1: { text: "we got home last night", isFirst: false },
+                event2: { text: "somebody broke into the flat", isFirst: true },
+                explanation: "The <strong>burglary (breaking in)</strong> happened BEFORE they <strong>got home</strong>. We use 'had broken' for the earlier action."
+            },
+            {
+                image: 'https://assets.codepen.io/17688442/Gemini_Generated_Image_ipe821ipe821ipe8.png',
+                fullText: "Karen didn't come to the Christmas party. She was sick.",
+                combinedSentence: "Karen didn't come to the Christmas party at school because she <span class='text-teal-700 font-extrabold bg-teal-200 px-1 rounded shadow-sm'>had been</span> sick.",
+                event1: { text: "Karen didn't come to the party", isFirst: false },
+                event2: { text: "she was sick", isFirst: true },
+                explanation: "She <strong>became sick</strong> BEFORE the time of the <strong>party</strong>. So being sick is the earlier action: 'had been sick'."
             }
-        }
-
-        function stopBGM() {
-            if (bgmAudio) {
-                bgmAudio.pause();
-                isBgmPlaying = false;
-                document.getElementById('btn-bgm-icon').className = "fa-solid fa-volume-xmark text-slate-400";
-            }
-        }
-
-        function toggleBGM() {
-            if(isBgmPlaying) {
-                stopBGM();
-            } else {
-                startBGM();
-            }
-        }
-
-        // --- Interactive Audio SFX generator ---
-        function playCorrectSound() {
-            if(audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.12);
-            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.35);
-        }
-        
-        function playWrongSound() {
-            if(audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(260, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(120, audioCtx.currentTime + 0.25);
-            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.25);
-        }
-
-        // --- Screen Navigation ---
-        function showScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(`screen-${screenId}`).classList.add('active');
-            
-            const btnHome = document.getElementById('btn-home');
-            if (screenId === 'home' || screenId === 'start') {
-                btnHome.classList.add('hidden');
-            } else {
-                btnHome.classList.remove('hidden');
-            }
-        }
-
-        function startApp() {
-            // Start playing the designated MP3 track on Start
-            startBGM();
-            showScreen('home');
-        }
-
-        function goHome() {
-            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-            showScreen('home');
-        }
-
-        function startGame(gameNumber) {
-            showScreen(`game-${gameNumber}`);
-            setTimeout(() => {
-                if (gameNumber === 1) initGame1();
-                if (gameNumber === 2) initGame2();
-                if (gameNumber === 3) initGame3();
-                if (gameNumber === 4) initGame4();
-            }, 50);
-        }
-
-        // ================= GAME 1: QUESTION WORDS =================
-        const g1Data = [
-            { answer: "<u class='decoration-2 decoration-amber-500 underline-offset-4'>Alice and Emma</u> are my cousins.", qword: "Who", rest: "are they?" },
-            { answer: "They are <u class='decoration-2 decoration-amber-500 underline-offset-4'>seven years old</u>.", qword: "How old", rest: "are they?" },
-            { answer: "My aunt is a <u class='decoration-2 decoration-amber-500 underline-offset-4'>nurse</u>.", qword: "What", rest: "is your aunt's job?" },
-            { answer: "I play board games <u class='decoration-2 decoration-amber-500 underline-offset-4'>at weekends</u>.", qword: "When", rest: "do you play board games?" },
-            { answer: "I can't hear music <u class='decoration-2 decoration-amber-500 underline-offset-4'>because she sings loudly</u>.", qword: "Why", rest: "can't you hear music?" }
-        ];
-        const allQWords = ["Who", "How old", "What", "When", "Why"];
-        let g1CurrentIdx = 0;
-
-        function initGame1() {
-            g1CurrentIdx = 0;
-            renderGame1();
-        }
-
-        function renderGame1() {
-            const data = g1Data[g1CurrentIdx];
-            document.getElementById('g1-progress').innerText = `Question ${g1CurrentIdx + 1} / ${g1Data.length}`;
-            document.getElementById('g1-answer-text').innerHTML = `"${data.answer}"`;
-            document.getElementById('g1-feedback').innerHTML = "";
-            document.getElementById('g1-next-btn').classList.add('hidden');
-            
-            const blankQuestion = document.getElementById('g1-blank-question');
-            blankQuestion.innerHTML = `<span class="text-blue-500">( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )</span> ${data.rest}`;
-            
-            const optionsContainer = document.getElementById('g1-options');
-            optionsContainer.innerHTML = "";
-            
-            allQWords.forEach(qw => {
-                const btn = document.createElement('button');
-                btn.className = "bg-white border border-blue-200 text-blue-700 font-bold py-2 px-4 rounded-xl hover:bg-blue-100 shadow-xs transition active:scale-95";
-                btn.innerText = qw;
-                btn.onclick = () => checkAnswerG1(btn, qw, data.qword, data.rest);
-                optionsContainer.appendChild(btn);
-            });
-        }
-
-        function checkAnswerG1(btn, selected, correct, restOfQuestion) {
-            const feedback = document.getElementById('g1-feedback');
-            const optionsContainer = document.getElementById('g1-options');
-            const blankQuestion = document.getElementById('g1-blank-question');
-            
-            Array.from(optionsContainer.children).forEach(b => b.disabled = true);
-
-            if (selected === correct) {
-                playCorrectSound();
-                btn.className = "bg-emerald-500 text-white font-bold py-2 px-4 rounded-xl shadow-xs transform scale-110 transition";
-                blankQuestion.innerHTML = `<span class="text-emerald-600 underline decoration-2 underline-offset-4">${correct}</span> ${restOfQuestion}`;
-                feedback.innerHTML = `<span class="text-emerald-600 animate-pop inline-block"><i class="fa-solid fa-check-circle"></i> Correct!</span>`;
-                document.getElementById('g1-next-btn').classList.remove('hidden');
-            } else {
-                playWrongSound();
-                btn.className = "bg-red-500 text-white font-bold py-2 px-4 rounded-xl shadow-xs transition opacity-50";
-                blankQuestion.innerHTML = `<span class="text-red-500">( ${selected} )</span> ${restOfQuestion}`;
-                feedback.innerHTML = `<span class="text-red-500"><i class="fa-solid fa-xmark-circle"></i> Try again!</span>`;
-                setTimeout(() => {
-                    renderGame1();
-                }, 1000);
-            }
-        }
-
-        function nextQuestionG1() {
-            g1CurrentIdx++;
-            if (g1CurrentIdx < g1Data.length) {
-                renderGame1();
-            } else {
-                document.getElementById('g1-feedback').innerHTML = `<span class="text-purple-600"><i class="fa-solid fa-star"></i> You are a great teacher!</span>`;
-                document.getElementById('g1-next-btn').innerHTML = `完成！回主頁 <i class="fa-solid fa-house"></i>`;
-                document.getElementById('g1-next-btn').onclick = goHome;
-            }
-        }
-
-        // ================= GAME 2: JOB MATCH =================
-        const jobsList = [
-            { id: 'job1', word: 'Nurse', img: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.49.37+PM+%282%29.jpeg' },
-            { id: 'job2', word: 'Doctor', img: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.49.37+PM.jpeg' },
-            { id: 'job3', word: 'Engineer', img: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.49.37+PM+%281%29.jpeg' },
-            { id: 'job4', word: 'Teacher', img: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.49.36+PM+%281%29.jpeg' },
-            { id: 'job5', word: 'Police', img: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.49.36+PM+%282%29.jpeg' },
-            { id: 'job6', word: 'Lawyer', img: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.49.36+PM.jpeg' }
-        ];
-        
-        let g2SelectedWord = null;
-        let g2SelectedPic = null;
-        let g2MatchesFound = 0;
-
-        function initGame2() {
-            g2SelectedWord = null;
-            g2SelectedPic = null;
-            g2MatchesFound = 0;
-            document.getElementById('g2-win-msg').classList.add('hidden');
-            
-            const shuffledWords = [...jobsList].sort(() => Math.random() - 0.5);
-            const shuffledPics = [...jobsList].sort(() => Math.random() - 0.5);
-
-            const wordsCol = document.getElementById('g2-words-col');
-            const picsCol = document.getElementById('g2-pics-col');
-            wordsCol.innerHTML = '';
-            picsCol.innerHTML = '';
-
-            shuffledWords.forEach(job => {
-                const div = document.createElement('div');
-                div.className = "match-card bg-white border-2 border-slate-200 rounded-xl p-3 text-center font-bold text-slate-700 shadow-xs flex items-center justify-center min-h-[64px]";
-                div.innerText = job.word;
-                div.onclick = () => selectWordG2(div, job.id);
-                wordsCol.appendChild(div);
-            });
-
-            shuffledPics.forEach(job => {
-                const div = document.createElement('div');
-                div.className = "match-card bg-white border-2 border-slate-200 rounded-xl p-2 text-center text-slate-500 shadow-xs flex items-center justify-center min-h-[64px]";
-                div.innerHTML = `<img src="${job.img}" alt="Job pic" class="h-10 w-full object-contain rounded-md pointer-events-none">`;
-                div.onclick = () => selectPicG2(div, job.id);
-                picsCol.appendChild(div);
-            });
-        }
-
-        function selectWordG2(el, id) {
-            if (el.classList.contains('matched')) return;
-            document.querySelectorAll('#g2-words-col .match-card').forEach(c => c.classList.remove('selected'));
-            el.classList.add('selected');
-            g2SelectedWord = { el, id };
-            checkMatchG2();
-        }
-
-        function selectPicG2(el, id) {
-            if (el.classList.contains('matched')) return;
-            document.querySelectorAll('#g2-pics-col .match-card').forEach(c => c.classList.remove('selected'));
-            el.classList.add('selected');
-            g2SelectedPic = { el, id };
-            checkMatchG2();
-        }
-
-        function checkMatchG2() {
-            if (g2SelectedWord && g2SelectedPic) {
-                if (g2SelectedWord.id === g2SelectedPic.id) {
-                    playCorrectSound();
-                    g2SelectedWord.el.classList.replace('selected', 'matched');
-                    g2SelectedPic.el.classList.replace('selected', 'matched');
-                    g2MatchesFound++;
-                    
-                    if (g2MatchesFound === jobsList.length) {
-                        document.getElementById('g2-win-msg').classList.remove('hidden');
-                    }
-                } else {
-                    playWrongSound();
-                    setTimeout(() => {
-                        if (g2SelectedWord && !g2SelectedWord.el.classList.contains('matched')) g2SelectedWord.el.classList.remove('selected');
-                        if (g2SelectedPic && !g2SelectedPic.el.classList.contains('matched')) g2SelectedPic.el.classList.remove('selected');
-                        g2SelectedWord = null;
-                        g2SelectedPic = null;
-                    }, 500);
-                    return;
-                }
-                g2SelectedWord = null;
-                g2SelectedPic = null;
-            }
-        }
-
-        // ================= GAME 3: ACTIVITY DRAG & DROP =================
-        const activities = [
-            { id: 'act1', name: 'Painting', emoji: '🎨', imgUrl: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.21.10+PM.jpeg' },
-            { id: 'act2', name: 'Board game', emoji: '🎲', imgUrl: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.21.10+PM+%281%29.jpeg' },
-            { id: 'act3', name: 'Dancing', emoji: '🩰', imgUrl: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.21.10+PM+%282%29.jpeg' },
-            { id: 'act4', name: 'Singing', emoji: '🎤', imgUrl: 'https://assets.codepen.io/17688442/WhatsApp+Image+2026-07-14+at+2.21.11+PM.jpeg' }
         ];
 
-        let activeDraggable = null;
-        let tappedSelectedDraggable = null; // Support tap-to-select for effortless mobile support
-        let initialX, initialY, currentX, currentY;
+        // Part 2 Data
+        const part2Questions = [
+            { id: 1, title: "(1) THE FALL", text: "Leo", verb: "fall", rest: "off his skateboard before he managed to stand up.", answer: "had fallen" },
+            { id: 2, title: "(2) THE FEAR", text: "Leo felt very afraid because he", verb: "hurt", rest: "his leg during the fall.", answer: "had hurt" },
+            { id: 3, title: "(3) THE RESOLVE", text: "He resolved to try again after he", verb: "find", rest: "some protective gear.", answer: "had found" },
+            { id: 4, title: "(4) THE PREPARATION", text: "He was ready to skate after he", verb: "put on", rest: "his helmet and pads.", answer: "had put on" },
+            { id: 5, title: "(5) THE PRACTICE", text: "When Leo began to practice, he", verb: "fasten", rest: "his helmet tightly.", answer: "had fastened" },
+            { id: 6, title: "(6) THE SUCCESS", text: "Leo felt great joy because he", verb: "master", rest: "the skateboard after many tries.", answer: "had mastered" }
+        ];
+
+        // --- STATE VARIABLES ---
+        let currentPart1Index = 0;
+        let part1Completed = false;
+
+        // --- DOM ELEMENTS ---
+        const btnPart1 = document.getElementById('btn-part1');
+        const btnPart2 = document.getElementById('btn-part2');
+        const part1Container = document.getElementById('part1-container');
+        const part2Container = document.getElementById('part2-container');
         
-        let g3Queue = [];
-        let g3CurrentTarget = null;
+        // Part 1 Elements
+        const qContainer = document.getElementById('q-container');
+        const feedbackPart1 = document.getElementById('feedback-part1');
+        const nextQBtn = document.getElementById('next-q-btn');
+        const part1Progress = document.getElementById('part1-progress');
 
-        function initGame3() {
-            const container = document.getElementById('g3-items-container');
-            container.innerHTML = '';
-            tappedSelectedDraggable = null;
+        // Part 2 Elements
+        const comicQuestionsContainer = document.getElementById('comic-questions');
+        const checkAllBtn = document.getElementById('check-all-btn');
+        const finalMessage = document.getElementById('final-message');
+
+
+        // --- FUNCTIONS FOR PART 1 ---
+
+        function loadPart1Question() {
+            const q = part1Questions[currentPart1Index];
             
-            document.getElementById('g3-target-text').innerText = 'Drop or tap here!';
-            document.getElementById('g3-dropzone').classList.remove('border-emerald-500', 'bg-emerald-50');
-
-            g3Queue = [...activities].sort(() => Math.random() - 0.5);
+            // Reset feedback and buttons
+            feedbackPart1.className = 'mt-6 p-4 rounded-lg hidden text-center text-lg font-medium';
+            feedbackPart1.innerHTML = '';
+            nextQBtn.classList.add('hidden');
             
-            activities.forEach((act, idx) => {
-                const el = document.createElement('div');
-                el.className = `draggable bg-white p-3 rounded-2xl shadow-md border border-slate-200 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-slate-50 transition-transform active:scale-95 w-16 h-16 relative`;
-                
-                el.innerHTML = `<span class="text-4xl drop-shadow-xs pointer-events-none">${act.emoji}</span>`;
-                el.dataset.id = act.id;
-                el.dataset.imgUrl = act.imgUrl;
-                el.dataset.name = act.name;
+            // 移除隨機打亂，固定選項順序 (Q1:A, Q2:B, Q3:B)
+            const options = [
+                { data: q.event1, id: 'opt1' },
+                { data: q.event2, id: 'opt2' }
+            ];
 
-                // Bind both dragging and tapping events
-                setupDraggable(el);
-                container.appendChild(el);
-            });
-
-            // Make the dropzone also responsive to tapping
-            const dropzone = document.getElementById('g3-dropzone');
-            dropzone.onclick = handleDropzoneTap;
-
-            nextG3Challenge();
-        }
-        
-        function nextG3Challenge() {
-            const dropzone = document.getElementById('g3-dropzone');
-            const teacherView = document.getElementById('g3-teacher-view');
-            const targetImg = document.getElementById('g3-target-image');
+            let html = `
+                <div class="flex flex-col md:flex-row gap-6 items-center">
+                    <div class="w-full md:w-1/2">
+                        <img src="${q.image}" alt="Scene illustration" class="w-full h-64 object-cover rounded-xl shadow-md border border-gray-200">
+                    </div>
+                    <div class="w-full md:w-1/2 flex flex-col justify-center space-y-4">
+                        <div id="context-box" class="p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-inner transition-colors duration-500">
+                            <p class="text-gray-600 text-sm mb-1 italic">Context:</p>
+                            <p id="context-sentence" class="text-lg font-semibold text-gray-800 transition-all duration-500">"${q.fullText}"</p>
+                        </div>
+                        <p class="font-bold text-teal-700 text-lg mt-2">Which action happened FIRST?</p>
+                        <button id="${options[0].id}" class="choice-btn text-left p-4 border-2 border-gray-300 rounded-xl hover:border-teal-400 hover:bg-teal-50 transition duration-200 text-lg font-medium bg-white" data-isfirst="${options[0].data.isFirst}">
+                            A) ${options[0].data.text}
+                        </button>
+                        <button id="${options[1].id}" class="choice-btn text-left p-4 border-2 border-gray-300 rounded-xl hover:border-teal-400 hover:bg-teal-50 transition duration-200 text-lg font-medium bg-white" data-isfirst="${options[1].data.isFirst}">
+                            B) ${options[1].data.text}
+                        </button>
+                    </div>
+                </div>
+            `;
             
-            if (g3Queue.length === 0) {
-                teacherView.classList.remove('hidden');
-                targetImg.classList.add('hidden');
-                teacherView.innerHTML = `<div class="text-4xl mb-1 animate-pop">🎉</div><h3 class="text-xl font-bold text-emerald-600 comic-font">Well Done!</h3>`;
-                document.getElementById('g3-target-text').innerText = 'Completed!';
-                return;
-            }
+            qContainer.innerHTML = html;
+            part1Progress.innerText = `Question ${currentPart1Index + 1} of ${part1Questions.length}`;
 
-            g3CurrentTarget = g3Queue.shift();
-            
-            teacherView.classList.remove('hidden');
-            targetImg.classList.add('hidden');
-            targetImg.classList.remove('animate-pop');
-            document.getElementById('g3-target-text').innerText = 'Listen & Drop here!';
-            
-            setTimeout(playG3Audio, 800);
-        }
-
-        function playG3Audio() {
-            if (!g3CurrentTarget) return;
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(g3CurrentTarget.name);
-                
-                const voices = window.speechSynthesis.getVoices();
-                const enVoice = voices.find(v => v.lang.startsWith('en-') && v.name.includes('Google'));
-                if(enVoice) utterance.voice = enVoice;
-                
-                utterance.rate = 0.8;
-                window.speechSynthesis.speak(utterance);
-            }
-        }
-
-        // --- Dragging & Touch Engine ---
-        function setupDraggable(el) {
-            // Drag listeners
-            el.addEventListener('touchstart', dragStart, {passive: false});
-            el.addEventListener('touchmove', drag, {passive: false});
-            el.addEventListener('touchend', dragEnd, {passive: false});
-            el.addEventListener('mousedown', dragStart);
-            
-            // Tap fallback helper
-            el.addEventListener('click', (e) => {
-                e.stopPropagation();
-                handleElementTap(el);
+            // Add event listeners to new buttons
+            document.querySelectorAll('.choice-btn').forEach(btn => {
+                btn.addEventListener('click', handlePart1Choice);
             });
         }
 
-        // Handle Tap selection (Mobile UX fallback)
-        function handleElementTap(el) {
-            document.querySelectorAll('.draggable').forEach(d => d.classList.remove('tapped-selected'));
-            
-            if (tappedSelectedDraggable === el) {
-                tappedSelectedDraggable = null;
-                document.getElementById('g3-target-text').innerText = 'Listen & Drop here!';
-            } else {
-                tappedSelectedDraggable = el;
-                el.classList.add('tapped-selected');
-                document.getElementById('g3-target-text').innerText = 'Now tap the Girl photo!';
-            }
-        }
-
-        // Trigger action when user taps on the dropzone while an emoji is selected
-        function handleDropzoneTap() {
-            if (!tappedSelectedDraggable) return;
-            
-            const dropzone = document.getElementById('g3-dropzone');
-            
-            if (tappedSelectedDraggable.dataset.id === g3CurrentTarget.id) {
-                executeMatchSuccess(tappedSelectedDraggable);
-            } else {
-                executeMatchFailure(tappedSelectedDraggable);
-            }
-            
-            tappedSelectedDraggable.classList.remove('tapped-selected');
-            tappedSelectedDraggable = null;
-        }
-
-        function dragStart(e) {
-            tappedSelectedDraggable = null; // Reset tap selections on drag
-            document.querySelectorAll('.draggable').forEach(d => d.classList.remove('tapped-selected'));
-
-            if (e.type === 'touchstart') {
-                activeDraggable = e.target.closest('.draggable');
-                initialX = e.touches[0].clientX - activeDraggable.offsetLeft;
-                initialY = e.touches[0].clientY - activeDraggable.offsetTop;
-            } else {
-                if (!e.target.closest('.draggable')) return;
-                activeDraggable = e.target.closest('.draggable');
-                initialX = e.clientX - activeDraggable.offsetLeft;
-                initialY = e.clientY - activeDraggable.offsetTop;
-            }
-            if (activeDraggable) {
-                activeDraggable.style.zIndex = '50';
-                activeDraggable.style.position = 'absolute';
-                activeDraggable.style.transform = 'scale(1.15)';
-                activeDraggable.style.pointerEvents = 'none'; // Avoid interception during hover
-            }
-        }
-
-        function drag(e) {
-            if (!activeDraggable) return;
-            e.preventDefault();
-            
-            if (e.type === 'touchmove') {
-                currentX = e.touches[0].clientX - initialX;
-                currentY = e.touches[0].clientY - initialY;
-            } else {
-                currentX = e.clientX - initialX;
-                currentY = e.clientY - initialY;
-            }
-            
-            activeDraggable.style.left = `${currentX}px`;
-            activeDraggable.style.top = `${currentY}px`;
-
-            checkDropzoneHover();
-        }
-
-        function checkDropzoneHover() {
-            const dropzone = document.getElementById('g3-dropzone');
-            const drRect = activeDraggable.getBoundingClientRect();
-            const dzRect = dropzone.getBoundingClientRect();
-
-            const overlap = !(drRect.right < dzRect.left || 
-                              drRect.left > dzRect.right || 
-                              drRect.bottom < dzRect.top || 
-                              drRect.top > dzRect.bottom);
-
-            if (overlap) {
-                dropzone.classList.add('active-zone');
-            } else {
-                dropzone.classList.remove('active-zone');
-            }
-            return overlap;
-        }
-
-        function dragEnd(e) {
-            if (!activeDraggable) return;
-            
-            const isOverlap = checkDropzoneHover();
-            const dropzone = document.getElementById('g3-dropzone');
-            dropzone.classList.remove('active-zone');
-
-            // Restore drag styling
-            activeDraggable.style.pointerEvents = 'auto';
-            activeDraggable.style.transform = 'scale(1)';
-            activeDraggable.style.zIndex = '10';
-
-            if (isOverlap) {
-                if (activeDraggable.dataset.id === g3CurrentTarget.id) {
-                    executeMatchSuccess(activeDraggable);
-                } else {
-                    executeMatchFailure(activeDraggable);
-                }
-            } else {
-                // Return home
-                activeDraggable.style.position = 'relative';
-                activeDraggable.style.left = 'auto';
-                activeDraggable.style.top = 'auto';
-            }
-
-            activeDraggable = null;
-        }
-
-        // Shared match responses
-        function executeMatchSuccess(element) {
-            playCorrectSound();
-            const imgUrl = element.dataset.imgUrl;
-            const actName = element.dataset.name;
-            const dropzone = document.getElementById('g3-dropzone');
-            
-            document.getElementById('g3-teacher-view').classList.add('hidden');
-            
-            const targetImg = document.getElementById('g3-target-image');
-            targetImg.src = imgUrl;
-            targetImg.classList.remove('hidden');
-            targetImg.classList.add('animate-pop');
-            
-            document.getElementById('g3-target-text').innerText = actName;
-            dropzone.classList.add('border-emerald-500', 'bg-emerald-50');
-            
-            element.style.display = 'none';
-            
-            setTimeout(() => {
-                dropzone.classList.remove('border-emerald-500', 'bg-emerald-50');
-                nextG3Challenge();
-            }, 2500);
-        }
-
-        function executeMatchFailure(element) {
-            playWrongSound();
-            const dropzone = document.getElementById('g3-dropzone');
-            dropzone.classList.add('border-red-500', 'bg-red-50');
-            document.getElementById('g3-target-text').innerText = 'Oops! Try again.';
-            
-            setTimeout(() => {
-                dropzone.classList.remove('border-red-500', 'bg-red-50');
-                document.getElementById('g3-target-text').innerText = 'Listen & Drop here!';
-            }, 1000);
-            
-            element.style.position = 'relative';
-            element.style.left = 'auto';
-            element.style.top = 'auto';
-        }
-
-        // Mouse Drag helper bindings
-        document.addEventListener('mousemove', drag);
-        document.addEventListener('mouseup', dragEnd);
-
-        // ================= GAME 4: DICTATION =================
-        const dictationWords = ['immediately', 'instantly', 'ordinary'];
-        let g4CurrentIdx = 0;
-        let g4Mode = 'normal';
-        let g4CorrectionCount = 0;
-
-        function initGame4() {
-            g4CurrentIdx = 0;
-            g4Mode = 'normal';
-            renderDictationWord();
-            
-            const inputField = document.getElementById('g4-input');
-            const newField = inputField.cloneNode(true);
-            inputField.parentNode.replaceChild(newField, inputField);
-            
-            newField.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter' && !newField.disabled) {
-                    submitDictation();
-                }
+        function handlePart1Choice(e) {
+            // Disable buttons after click
+            document.querySelectorAll('.choice-btn').forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('cursor-not-allowed', 'opacity-70');
             });
-        }
 
-        function renderDictationWord() {
-            document.getElementById('g4-progress').innerText = `Word ${g4CurrentIdx + 1} of ${dictationWords.length}`;
-            g4Mode = 'normal';
-            g4CorrectionCount = 0;
-            
-            const inputField = document.getElementById('g4-input');
-            inputField.value = '';
-            inputField.disabled = false;
-            
-            inputField.classList.remove('border-emerald-500', 'border-red-500', 'bg-emerald-50', 'bg-red-50', 'text-emerald-600', 'text-red-500', 'line-through');
-            inputField.classList.add('border-slate-200', 'text-slate-700');
-            
-            document.getElementById('g4-feedback').innerHTML = '';
-            
-            const submitBtn = document.getElementById('g4-submit-btn');
-            submitBtn.classList.remove('hidden');
-            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> 提交答案 (Submit)';
-            
-            document.getElementById('g4-next-btn').classList.add('hidden');
-            document.getElementById('g4-finish-btn').classList.add('hidden');
-            
-            setTimeout(() => inputField.focus(), 100);
-        }
+            const clickedBtn = e.target.closest('button');
+            const isCorrect = clickedBtn.dataset.isfirst === 'true';
+            const q = part1Questions[currentPart1Index];
 
-        function playDictationAudio() {
-            if (!('speechSynthesis' in window)) {
-                document.getElementById('g4-progress').innerText = "Audio not supported here.";
-                return;
-            }
-            
-            window.speechSynthesis.cancel();
-            const word = dictationWords[g4CurrentIdx];
-            const utterance = new SpeechSynthesisUtterance(word);
-            
-            const voices = window.speechSynthesis.getVoices();
-            const enVoice = voices.find(v => v.lang.startsWith('en-') && v.name.includes('Google'));
-            if(enVoice) utterance.voice = enVoice;
-            
-            utterance.rate = 0.8;
-            window.speechSynthesis.speak(utterance);
-        }
+            feedbackPart1.classList.remove('hidden');
 
-        function submitDictation() {
-            const inputField = document.getElementById('g4-input');
-            const userAnswer = inputField.value.trim().toLowerCase();
-            const correctAnswer = dictationWords[g4CurrentIdx].toLowerCase();
-            const feedbackArea = document.getElementById('g4-feedback');
-            const submitBtn = document.getElementById('g4-submit-btn');
+            if (isCorrect) {
+                clickedBtn.classList.add('correct-animation');
+                
+                // 動態改變上方的情境句子並加入 Highlight 效果
+                const contextSentence = document.getElementById('context-sentence');
+                const contextBox = document.getElementById('context-box');
+                contextSentence.innerHTML = q.combinedSentence;
+                contextSentence.classList.add('text-teal-900', 'scale-105', 'transform', 'origin-left');
+                contextBox.classList.add('bg-teal-50', 'border-teal-300');
 
-            if (userAnswer === '') {
-                feedbackArea.innerHTML = `<span class="text-rose-500 font-bold bg-rose-100 px-3 py-1 rounded-lg text-sm"><i class="fa-solid fa-triangle-exclamation"></i> 請輸入答案！ (Please type an answer)</span>`;
-                return;
+                feedbackPart1.classList.add('bg-green-100', 'text-green-800', 'border', 'border-green-300');
+                feedbackPart1.innerHTML = `
+                    <div class="flex items-center justify-center mb-2">
+                        <svg class="w-6 h-6 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <strong>Correct!</strong>
+                    </div>
+                    <p class="text-sm mt-2">${q.explanation}</p>
+                `;
+            } else {
+                clickedBtn.classList.add('incorrect-animation');
+                // Find the correct button to highlight it
+                const correctBtn = document.querySelector('.choice-btn[data-isfirst="true"]');
+                correctBtn.classList.add('border-green-500', 'bg-green-50');
+
+                feedbackPart1.classList.add('bg-red-100', 'text-red-800', 'border', 'border-red-300');
+                feedbackPart1.innerHTML = `
+                    <div class="flex items-center justify-center mb-2">
+                        <svg class="w-6 h-6 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        <strong>Not quite!</strong>
+                    </div>
+                    <p class="text-sm mt-2">${q.explanation}</p>
+                `;
             }
 
-            if (g4Mode === 'normal') {
-                if (userAnswer === correctAnswer) {
-                    playCorrectSound();
-                    inputField.disabled = true;
-                    submitBtn.classList.add('hidden');
-                    
-                    // Softly hide mobile keyboard
-                    inputField.blur();
-                    
-                    inputField.classList.replace('border-slate-200', 'border-emerald-500');
-                    inputField.classList.remove('text-slate-700');
-                    inputField.classList.add('bg-emerald-50', 'text-emerald-600');
-                    
-                    feedbackArea.innerHTML = `
-                        <div class="animate-pop text-emerald-600 font-bold text-xl mb-1">
-                            <i class="fa-solid fa-check-circle"></i> Excellent!
-                        </div>
-                    `;
-                    
-                    if (g4CurrentIdx < dictationWords.length - 1) {
-                        document.getElementById('g4-next-btn').classList.remove('hidden');
-                    } else {
-                        document.getElementById('g4-finish-btn').classList.remove('hidden');
-                    }
-                } else {
-                    playWrongSound();
-                    g4Mode = 'correction';
-                    g4CorrectionCount = 0;
-                    
-                    inputField.classList.replace('border-slate-200', 'border-red-500');
-                    inputField.classList.remove('text-slate-700');
-                    inputField.classList.add('bg-red-50', 'text-red-500', 'line-through');
-                    
-                    feedbackArea.innerHTML = `
-                        <div class="text-red-500 font-bold text-sm mb-1"><i class="fa-solid fa-xmark-circle"></i> Oops! That's not quite right.</div>
-                        <div class="text-slate-600 font-medium text-xs mb-2">Correct Answer: 
-                            <span class="text-emerald-600 font-bold text-lg ml-2 comic-font tracking-wider bg-emerald-100 px-3 py-1 rounded-lg inline-block">${correctAnswer}</span>
-                        </div>
-                        <div class="text-amber-600 font-bold bg-amber-100 p-2 rounded-lg text-xs animate-pulse">
-                            請輸入正確答案 3 次作爲改正。<br>(Type it correctly 3 times: 0/3)
-                        </div>
-                    `;
-                    
-                    submitBtn.innerHTML = '<i class="fa-solid fa-pen"></i> 改正 (Correct)';
-                    
-                    setTimeout(() => {
-                        inputField.value = '';
-                        inputField.classList.remove('line-through', 'border-red-500', 'bg-red-50', 'text-red-500');
-                        inputField.classList.add('border-slate-200', 'text-slate-700');
-                        inputField.focus();
-                    }, 1500);
-                }
-            } else if (g4Mode === 'correction') {
-                if (userAnswer === correctAnswer) {
-                    playCorrectSound();
-                    g4CorrectionCount++;
-                    inputField.value = '';
-                    
-                    if (g4CorrectionCount < 3) {
-                        feedbackArea.innerHTML = `
-                            <div class="text-emerald-600 font-bold text-sm mb-1"><i class="fa-solid fa-check"></i> Good!</div>
-                            <div class="text-slate-600 font-medium text-xs mb-1">Correct Answer: <span class="text-emerald-600 font-bold text-base ml-1">${correctAnswer}</span></div>
-                            <div class="text-amber-600 font-bold bg-amber-100 p-2 rounded-lg text-xs">
-                                繼續改正。<br>(Type it correctly: ${g4CorrectionCount}/3)
+            nextQBtn.classList.remove('hidden');
+        }
+
+        // --- FUNCTIONS FOR PART 2 ---
+
+        function renderPart2() {
+            let html = '';
+            part2Questions.forEach((q, index) => {
+                html += `
+                    <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                        <div class="font-bold text-indigo-800 whitespace-nowrap w-full sm:w-40 text-lg sm:text-base">${q.title}</div>
+                        <div class="flex-grow flex flex-wrap items-center gap-2 text-base sm:text-lg leading-loose sm:leading-normal">
+                            <span>${q.text}</span>
+                            <div class="relative group inline-block">
+                                <input type="text" id="q2-input-${index}" class="part2-input w-28 sm:w-40 border-b-2 border-indigo-300 bg-transparent text-center focus:outline-none focus:border-indigo-600 font-semibold text-indigo-700 placeholder-gray-400 px-1 py-1" placeholder="(${q.verb})" autocomplete="off" autocorrect="off" autocapitalize="none">
+                                <!-- Tooltip hint -->
+                                <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-focus-within:block bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
+                                    Use had + pp of '${q.verb}'
+                                </div>
                             </div>
-                        `;
-                        inputField.focus();
-                    } else {
-                        g4Mode = 'normal';
-                        feedbackArea.innerHTML = `
-                            <div class="text-emerald-600 font-bold text-base mb-1"><i class="fa-solid fa-star"></i> 改正完成！ (Correction Done)</div>
-                            <div class="text-blue-600 font-bold mt-1 text-xs animate-pulse">現在重新默寫此字！ (Now let's retest!)</div>
-                        `;
-                        submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> 提交答案 (Submit)';
-                        
-                        setTimeout(() => {
-                             inputField.value = '';
-                             playDictationAudio();
-                             feedbackArea.innerHTML = `
-                                <div class="text-blue-600 font-bold text-xs"><i class="fa-solid fa-headphones"></i> 請聽讀音並拼寫出單字。 (Listen and type)</div>
-                             `;
-                             inputField.focus();
-                        }, 2000);
-                    }
-                } else {
-                    playWrongSound();
-                    inputField.value = '';
-                    feedbackArea.innerHTML = `
-                        <div class="text-red-500 font-bold text-sm mb-1"><i class="fa-solid fa-xmark"></i> 串錯了，請對著抄！</div>
-                        <div class="text-slate-600 font-medium text-xs mb-1">Correct Answer: <span class="text-emerald-600 font-bold text-base ml-1">${correctAnswer}</span></div>
-                        <div class="text-amber-600 font-bold bg-amber-100 p-2 rounded-lg text-xs">
-                            請輸入正確答案 3 次作爲改正。<br>(Type it correctly: ${g4CorrectionCount}/3)
+                            <span>${q.rest}</span>
                         </div>
-                    `;
-                    inputField.focus();
+                        <div id="q2-icon-${index}" class="w-6 h-6 flex-shrink-0 ml-0 sm:ml-2 mt-2 sm:mt-0 self-end sm:self-auto"></div>
+                    </div>
+                `;
+            });
+            comicQuestionsContainer.innerHTML = html;
+        }
+
+        function checkPart2Answers() {
+            let allCorrect = true;
+            
+            part2Questions.forEach((q, index) => {
+                const inputElement = document.getElementById(`q2-input-${index}`);
+                const iconContainer = document.getElementById(`q2-icon-${index}`);
+                const userAnswer = inputElement.value.trim().toLowerCase();
+                
+                // Reset styling
+                inputElement.classList.remove('correct-animation', 'incorrect-animation', 'border-red-500', 'text-red-600', 'border-green-500', 'text-green-700');
+                
+                // Allow minor variations in spacing
+                const normalizedAnswer = q.answer.toLowerCase();
+                // Special case handling for question 5 (already fasten) -> had already fastened
+                
+                if (userAnswer === normalizedAnswer) {
+                    inputElement.classList.add('border-green-500', 'text-green-700', 'font-bold');
+                    inputElement.disabled = true; // Lock correct answer
+                    iconContainer.innerHTML = `<svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+                } else {
+                    allCorrect = false;
+                    inputElement.classList.add('border-red-500', 'text-red-600', 'incorrect-animation');
+                    iconContainer.innerHTML = `<svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+                    
+                    // Small hint logic
+                    if (userAnswer !== "" && !userAnswer.includes("had")) {
+                         inputElement.placeholder = "Remember 'had'!";
+                         inputElement.value = "";
+                    }
                 }
+            });
+
+            if (allCorrect) {
+                checkAllBtn.classList.add('hidden');
+                finalMessage.classList.remove('hidden');
+                finalMessage.classList.add('fade-in');
             }
         }
 
-        function nextDictationWord() {
-            g4CurrentIdx++;
-            renderDictationWord();
-        }
+        // --- EVENT LISTENERS & INITIALIZATION ---
+
+        nextQBtn.addEventListener('click', () => {
+            currentPart1Index++;
+            if (currentPart1Index < part1Questions.length) {
+                loadPart1Question();
+            } else {
+                // Part 1 Finished
+                part1Completed = true;
+                qContainer.innerHTML = `
+                    <div class="text-center p-8 bg-teal-50 rounded-xl border border-teal-200">
+                        <h3 class="text-2xl font-bold text-teal-800 mb-2">Great job, Detective! 🕵️‍♀️</h3>
+                        <p class="text-lg text-gray-700 mb-4">You understand that the Past Perfect tense is used for the action that happened <strong>first</strong> in the past.</p>
+                        <p class="font-medium text-teal-600">Now you can proceed to Part 2 to practice writing it!</p>
+                    </div>
+                `;
+                feedbackPart1.classList.add('hidden');
+                nextQBtn.classList.add('hidden');
+                part1Progress.classList.add('hidden');
+                
+                // Unlock Part 2
+                btnPart2.disabled = false;
+                btnPart2.classList.remove('opacity-50', 'cursor-not-allowed');
+                btnPart2.classList.add('animate-bounce'); // Draw attention
+                btnPart2.title = "";
+            }
+        });
+
+        // Navigation Tabs
+        btnPart1.addEventListener('click', () => {
+            part1Container.classList.remove('hidden');
+            part2Container.classList.add('hidden');
+            btnPart2.classList.remove('animate-bounce');
+        });
+
+        btnPart2.addEventListener('click', () => {
+            if (!part1Completed) return; // Guard clause
+            part2Container.classList.remove('hidden');
+            part1Container.classList.add('hidden');
+            btnPart2.classList.remove('animate-bounce');
+        });
+
+        checkAllBtn.addEventListener('click', checkPart2Answers);
+
+        // Allow pressing Enter to check answers in Part 2
+        comicQuestionsContainer.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                checkPart2Answers();
+            }
+        });
+
+        // Init
+        loadPart1Question();
+        renderPart2();
 
     </script>
 </body>
